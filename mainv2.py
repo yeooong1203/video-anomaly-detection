@@ -56,8 +56,7 @@ if __name__ == '__main__':
             UCFTrainVideoDataset_Stratified(
                 conall_path="../C2FPL/concat_UCF.npy",
                 pseudo_path=args.pseudofile,
-                nalist_path="list/nalist_i3d.npy",
-                confidence_path="list/confidence_scores_o.npy"
+                nalist_path="list/nalist_i3d.npy"
             ),
             batch_size=args.batch_size_video,
             shuffle=True,
@@ -97,7 +96,6 @@ if __name__ == '__main__':
     print(f"Init best_auc: {best_auc:.4f} -> {best_path}")
     
     test_info = {"epoch": [], "test_auc": []}
-    confidence = torch.from_numpy(np.load("list/confidence_scores_o.npy")).float().to(device)
     
     for epoch in tqdm(range(1, args.max_epoch + 1), total=args.max_epoch, dynamic_ncols=True):
         loss = concatenated_train_variable_length(

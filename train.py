@@ -39,10 +39,9 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
     
     pbar = tqdm(train_loader, desc=f"Epoch {epoch}", dynamic_ncols=True)
     
-    for batch_idx, (features, labels, confidences, masks, lengths) in enumerate(pbar):
+    for batch_idx, (features, labels, masks, lengths) in enumerate(pbar):
         features = features.to(device)  # (B, max_T, 2048)
         labels = labels.to(device)      # (B, max_T) - padding=-1
-        confidences = confidences.to(device)
         masks = masks.to(device)        # (B, max_T)
         
         B, T, D = features.shape

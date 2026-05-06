@@ -29,14 +29,13 @@ class UCFTestVideoDataset(data.Dataset):
 
 class UCFTrainVideoDataset_Stratified(data.Dataset):
     
-    def __init__(self, conall_path, pseudo_path, nalist_path, confidence_path,
+    def __init__(self, conall_path, pseudo_path, nalist_path,
                  window_size=2000, stride=2000):
         
         self.nalist = np.load(nalist_path)
         self.num_videos = len(self.nalist)
         
         self.pseudo_labels = np.load(pseudo_path).astype(np.float32)
-        self.confidences = np.load(confidence_path).astype(np.float32)
         self.total_T = len(self.pseudo_labels)
 
 
@@ -83,23 +82,19 @@ class UCFTrainVideoDataset_Stratified(data.Dataset):
         window_features = window_features.mean(axis=1)  # (T, 2048)
         
         window_labels = self.pseudo_labels[global_start:global_end]  # (T,)
-
-        window_confidences = self.confidences[global_start:global_end]
         
         features = torch.from_numpy(window_features.astype(np.float32))
-        labels = torch.from_numpy(window_labels)
-        confidences = torch.from_numpy(window_confidences)
-        
+        labels = torch.from_numpy(window_labels)        
 
         window_length = len(features)
         
-        return features, labels, confidences, window_length
+        return features, labels, window_length
 
 
 
 def collate_fn_variable_length(batch):
 
-    features_list, labels_list, confidences_list, lengths = zip(*batch)
+    features_list, labels_list, lengths = zip(*batch)
     
     max_length = max(lengths)
     batch_size = len(batch)
@@ -107,15 +102,13 @@ def collate_fn_variable_length(batch):
     # padding
     features_padded = torch.zeros(batch_size, max_length, 2048)
     labels_padded = torch.zeros(batch_size, max_length) 
-    confidences_padded = torch.zeros(batch_size, max_length) 
     masks = torch.zeros(batch_size, max_length)
     
-    for i, (feat, label, confidence, length) in enumerate(zip(features_list, labels_list, confidences_list, lengths)):
+    for i, (feat, label, length) in enumerate(zip(features_list, labels_list, lengths)):
         features_padded[i, :length] = feat
         labels_padded[i, :length] = label
-        confidences_padded[i, :length] = confidence
         masks[i, :length] = 1 
     
     lengths = torch.tensor(lengths, dtype=torch.long)
     
-    return features_padded, labels_padded, confidences_padded, masks, lengths
+    return features_padded, labels_padded, masks, lengths
