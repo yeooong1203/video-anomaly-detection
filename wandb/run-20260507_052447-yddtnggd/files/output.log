@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "C:\Users\jplabuser\코드 정리본\mainv2.py", line 56, in <module>
+    UCFTrainVideoDataset_Stratified(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        conall_path="../C2FPL/concat_UCF.npy",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        confidence_path="list/confidence_scores_o.npy"
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\jplabuser\코드 정리본\dataset.py", line 39, in __init__
+    self.confidences = np.load(confidence_path).astype(np.float32)
+                       ~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\jplabuser\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\lib\_npyio_impl.py", line 454, in load
+    fid = stack.enter_context(open(os.fspath(file), "rb"))
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'list/confidence_scores_o.npy'

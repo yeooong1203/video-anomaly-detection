@@ -1,0 +1,23 @@
+2026-05-07 05:24:47,900 INFO    MainThread:13584 [wandb_setup.py:_flush():80] Current SDK version is 0.23.0
+2026-05-07 05:24:47,900 INFO    MainThread:13584 [wandb_setup.py:_flush():80] Configure stats pid to 13584
+2026-05-07 05:24:47,900 INFO    MainThread:13584 [wandb_setup.py:_flush():80] Loading settings from C:\Users\jplabuser\.config\wandb\settings
+2026-05-07 05:24:47,900 INFO    MainThread:13584 [wandb_setup.py:_flush():80] Loading settings from C:\Users\jplabuser\코드 정리본\wandb\settings
+2026-05-07 05:24:47,900 INFO    MainThread:13584 [wandb_setup.py:_flush():80] Loading settings from environment variables
+2026-05-07 05:24:47,901 INFO    MainThread:13584 [wandb_init.py:setup_run_log_directory():713] Logging user logs to C:\Users\jplabuser\코드 정리본\wandb\run-20260507_052447-yddtnggd\logs\debug.log
+2026-05-07 05:24:47,901 INFO    MainThread:13584 [wandb_init.py:setup_run_log_directory():714] Logging internal logs to C:\Users\jplabuser\코드 정리본\wandb\run-20260507_052447-yddtnggd\logs\debug-internal.log
+2026-05-07 05:24:47,901 INFO    MainThread:13584 [wandb_init.py:init():840] calling init triggers
+2026-05-07 05:24:47,901 INFO    MainThread:13584 [wandb_init.py:init():845] wandb.init called with sweep_config: {}
+config: {'feat_extractor': 'i3d', 'feature_size': 2048, 'rgb_list': './list/ucf-c3d.list', 'test_rgb_list': './list/ucf-c3d-test.list', 'gt': 'list/gt-ucf-RTFM.npy', 'lr': 0.01, 'batch_size': 128, 'workers': 0, 'model_name': 'C2FPL', 'num_classes': 1, 'datasetname': 'UCF', 'max_epoch': 30, 'optimizer': 'SGD', 'lossfn': 'BCE', 'stepsize': 5, 'pseudo': 'Unsup_labels/UCF_unsup_labels_original_V2.npy', 'windowsize': 0.09, 'modelversion': 'Model_V2', 'eps2': 0.4, 'outer_epochs': 1, 'pseudofile': 'Unsup_labels/pseudo_labels_swap_y.npy', 'conall': 'concat_UCF', 'modality': 'RGB', 'use_variable_length': True, 'model_type': 'all_cnn', 'batch_size_video': 32, 'accumulation_steps': 1, 'temporal_kernel': 5, 'lstm_hidden': 64, '_wandb': {}}
+2026-05-07 05:24:47,901 INFO    MainThread:13584 [wandb_init.py:init():888] starting backend
+2026-05-07 05:24:50,158 INFO    MainThread:13584 [wandb_init.py:init():891] sending inform_init request
+2026-05-07 05:24:50,182 INFO    MainThread:13584 [wandb_init.py:init():899] backend started and connected
+2026-05-07 05:24:50,200 INFO    MainThread:13584 [wandb_init.py:init():969] updated telemetry
+2026-05-07 05:24:50,201 INFO    MainThread:13584 [wandb_init.py:init():993] communicating run to backend with 90.0 second timeout
+2026-05-07 05:24:51,026 INFO    MainThread:13584 [wandb_init.py:init():1040] starting run threads in backend
+2026-05-07 05:24:51,084 INFO    MainThread:13584 [wandb_run.py:_console_start():2504] atexit reg
+2026-05-07 05:24:51,084 INFO    MainThread:13584 [wandb_run.py:_redirect():2352] redirect: wrap_raw
+2026-05-07 05:24:51,084 INFO    MainThread:13584 [wandb_run.py:_redirect():2421] Wrapping output streams.
+2026-05-07 05:24:51,084 INFO    MainThread:13584 [wandb_run.py:_redirect():2444] Redirects installed.
+2026-05-07 05:24:51,086 INFO    MainThread:13584 [wandb_init.py:init():1080] run started, returning control to user process
+2026-05-07 05:24:51,109 INFO    wandb-AsyncioManager-main:13584 [service_client.py:_forward_responses():80] Reached EOF.
+2026-05-07 05:24:51,109 INFO    wandb-AsyncioManager-main:13584 [mailbox.py:close():137] Closing mailbox, abandoning 2 handles.
