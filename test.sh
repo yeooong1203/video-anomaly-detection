@@ -5,7 +5,7 @@ python test.py \
     --batch-size 1\
     --lr 0.01\
     --feature-size 2048\
-    --gt list/gt-ucf-R.npy\
+    --gt list/gt-ucf-RTFM.npy\
     --datasetname UCF \
     --windowsize 0.15\
     --pseudofile Unsup_labels/pseudo_labels_swap_90.npy\

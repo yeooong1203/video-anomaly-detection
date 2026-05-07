@@ -17,6 +17,8 @@ parser.add_argument('--windowsize',type=float,  default=0.09, help='lr_scheduler
 parser.add_argument('--modelversion',type=str,  default='Model_V2', help='Model version')
 parser.add_argument('--pseudofile',type=str,  default='Unsup_labels/pseudo_labels_swap_90.npy', help='ground truth file')
 parser.add_argument('--conall',type=str,  default='concat_UCF', help='ground truth file')
+parser.add_argument('--test-conall-path',type=str,default='Concat_test_10.npy',help='Path to concatenated test feature memmap')
+parser.add_argument('--test-nalist-path',type=str,default='list/nalist_test_i3d.npy',help='Path to test video start/end index list')
 
 parser.add_argument('--use_variable_length', action='store_true',
                    help='Use variable-length video training')
@@ -31,3 +33,5 @@ parser.add_argument('--temporal_kernel', type=int, default=5,
                    help='Kernel size for temporal conv')
 parser.add_argument('--lstm_hidden', type=int, default=64,
                    help='LSTM hidden size')
+
+parser.add_argument('--ckpt-path',type=str,default='',help='Path to model checkpoint for test/TTA')

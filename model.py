@@ -12,10 +12,12 @@ class Model_V2_AllCNN(nn.Module):
         super().__init__()
         
         self.conv1 = nn.Conv1d(n_features, 256, kernel_size, padding=kernel_size//2)
-        
+        self.bn1 = nn.BatchNorm1d(256)
+
         self.conv_att1 = nn.Conv1d(n_features, 256, kernel_size, padding=kernel_size//2)
         
         self.conv2 = nn.Conv1d(256, 64, kernel_size, padding=kernel_size//2)
+        self.bn2 = nn.BatchNorm1d(64)
         
         self.conv_att2 = nn.Conv1d(256, 64, kernel_size, padding=kernel_size//2)
         
@@ -26,7 +28,7 @@ class Model_V2_AllCNN(nn.Module):
         self.gelu = nn.GELU()
         self.sigmoid = nn.Sigmoid()
     
-    def forward(self, inputs):
+    def forward(self, inputs, return_logits=False):
         orig_shape = inputs.shape
         
         if inputs.dim() == 3:
@@ -56,17 +58,27 @@ class Model_V2_AllCNN(nn.Module):
         # (B, T, 32)
         x = x.permute(0, 2, 1)
         
-        x = self.sigmoid(self.fc_out(x))
+        logits = self.fc_out(x) 
+        probs = self.sigmoid(logits)
 
-        x = x.permute(0, 2, 1)   # (B, 1, T)
-
-        x = F.avg_pool1d(
-            x,
+        probs = probs.permute(0, 2, 1) # (B, 1, T)
+        probs = F.avg_pool1d(
+            probs,
             kernel_size=7,
             stride=1,
             padding=3
         )
-
-        x = x.permute(0, 2, 1)   # (B, T, 1)
+        probs = probs.permute(0, 2, 1)   # (B, T, 1)
         
-        return x
+        if return_logits:
+            logits_pooled = logits.permute(0, 2, 1)
+            logits_pooled = F.avg_pool1d(
+                logits_pooled,
+                kernel_size=7,
+                stride=1,
+                padding=3
+            )
+            logits_pooled = logits_pooled.permute(0, 2, 1)
+            return probs, logits_pooled
+        
+        return probs
