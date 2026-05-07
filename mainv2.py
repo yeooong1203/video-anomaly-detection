@@ -4,7 +4,6 @@ import torch
 from dataset import (collate_fn_variable_length, UCFTestVideoDataset, UCFTrainVideoDataset_Stratified)
 from model import Model_V2_AllCNN
 from train import concatenated_train_variable_length
-from utillsv2 import Concat_list_all_crop_feedback
 from test import test
 import option
 from tqdm import tqdm
@@ -27,36 +26,33 @@ def set_seed(seed=42):
 if __name__ == '__main__':
     args = option.parser.parse_args()
     set_seed(42)
-    
-    len_N, original_lables  = Concat_list_all_crop_feedback(Test=False, create='False')
 
-    # WandB
-    wandb.login()
-    wandb.init(project="Unsupervised Anomaly Detection", config=args)
-    
+    if args.wandb_mode == "online":
+        wandb.login()
+    wandb.init(project="Unsupervised Anomaly Detection", config=args, mode=args.wandb_mode)
+
     from datetime import datetime
-    import subprocess
     
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_id = wandb.run.id
-    
+    run_id = wandb.run.id if wandb.run is not None else "local"  
+
     # Paths
-    os.makedirs("unsupervised_ckpt", exist_ok=True)
+    os.makedirs(args.ckpt_dir, exist_ok=True)
     model_name = f"{args.datasetname}_{args.model_type}"
-    best_path = f'unsupervised_ckpt/{model_name}_best_{ts}_{run_id}.pkl'
-    final_path = f'unsupervised_ckpt/{model_name}_final_{ts}_{run_id}.pkl'
-    
+    best_path = os.path.join(args.ckpt_dir, f'{model_name}_best_{ts}_{run_id}.pkl')
+    final_path = os.path.join(args.ckpt_dir, f'{model_name}_final_{ts}_{run_id}.pkl')
+
     test_loader = DataLoader(
-        UCFTestVideoDataset("../C2FPL/Concat_test_10.npy", "list/nalist_test_i3d.npy"),
+        UCFTestVideoDataset(args.test_conall_path, args.test_nalist_path),
         batch_size=1, shuffle=False,
         num_workers=args.workers, pin_memory=False, drop_last=False
     )
     
     train_loader = DataLoader(
             UCFTrainVideoDataset_Stratified(
-                conall_path="../C2FPL/concat_UCF.npy",
+                conall_path=args.train_conall_path,
                 pseudo_path=args.pseudofile,
-                nalist_path="list/nalist_i3d.npy"
+                nalist_path=args.train_nalist_path
             ),
             batch_size=args.batch_size_video,
             shuffle=True,
@@ -79,7 +75,7 @@ if __name__ == '__main__':
 
     optimizer = optim.SGD(
         model.parameters(),
-        lr=0.001,                  
+        lr=args.lr,                  
         weight_decay=5e-4,
         momentum=0.9,
         nesterov=True

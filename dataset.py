@@ -1,13 +1,6 @@
 import torch.utils.data as data
 import numpy as np
 import torch
-#torch.set_default_tensor_type('torch.cuda.FloatTensor')
-from tqdm import tqdm
-import option
-import torch.nn.functional as F
-
-args = option.parser.parse_args()
-
 
 class UCFTestVideoDataset(data.Dataset):
     def __init__(self, conall_path, nalist_path):

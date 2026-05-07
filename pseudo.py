@@ -1,10 +1,6 @@
 import numpy as np
-import torch
-import torch.nn as nn
 from tqdm import tqdm
-from sklearn.mixture import GaussianMixture
-import matplotlib.pyplot as plt
-import warnings
+import option
 
 
 def find_optimal_threshold(scores):
@@ -230,8 +226,9 @@ def generate_improved_pseudo_labels(train_data, nalist,
 
 
 def main():
-    train_nalist_path = r".\list\nalist_i3d.npy"
-    train_data_path = r"..\C2FPL\concat_UCF.npy"
+    args = option.parser.parse_args()
+    train_nalist_path = args.train_nalist_path
+    train_data_path = args.train_conall_path
     
     nalist = np.load(train_nalist_path)
     total_T = int(nalist[-1, 1])
@@ -264,9 +261,9 @@ def main():
     )
     
     all_labels_flat = np.concatenate(pseudo_labels_list)
-    np.save("pseudo_labels_swap.npy", all_labels_flat)
-    
-    print(f"  Saved: pseudo_labels_swap.npy")
+    np.save(args.pseudo_output, all_labels_flat)
+
+    print(f"  Saved: {args.pseudo_output}")
 
 
 if __name__ == "__main__":

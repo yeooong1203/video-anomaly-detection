@@ -1,15 +1,6 @@
-import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-#torch.set_default_tensor_type('torch.cuda.FloatTensor')
-from torch.nn import L1Loss
-from torch.nn import MSELoss
-import option
-import math 
 from tqdm import tqdm
-
-args = option.parser.parse_args()
 
 
 def adaptive_hybrid_loss(outputs, targets, threshold=0.3):
@@ -23,7 +14,6 @@ def adaptive_hybrid_loss(outputs, targets, threshold=0.3):
     
     loss = mask * hb + (1 - mask) * bce
     return loss
-
 
 
 def concatenated_train_variable_length(train_loader, model, optimizer, epoch, 
@@ -43,12 +33,9 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
         features = features.to(device)  # (B, max_T, 2048)
         labels = labels.to(device)      # (B, max_T) - padding=-1
         masks = masks.to(device)        # (B, max_T)
-        
-        B, T, D = features.shape
-        
+                
         outputs = model(features)
         outputs = outputs.squeeze(-1)  # (B, T)
-
         
         loss = adaptive_hybrid_loss(
             outputs, labels, threshold=0.3

@@ -3,9 +3,7 @@ import torch
 from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
 import numpy as np
 from dataset import UCFTestVideoDataset
-from torch.utils.data import DataLoader
 import option
-import torch
 from tqdm import tqdm
 import csv
 import copy
@@ -14,6 +12,32 @@ from adapter import ResidualAdapter2048
 import torch.nn.functional as F
 import json
 from pathlib import Path
+    
+def test(dataloader, model, args, device, frame_repeat=16):
+    model.eval()
+    gt = np.load(args.gt, allow_pickle=True)
+
+    preds = []
+    with torch.no_grad():
+        for x in dataloader:
+            x = x.to(device)
+            if x.dim() == 2:
+                x = x.unsqueeze(0)
+
+            scores = model(x).squeeze(0).squeeze(-1)
+            preds.append(scores.detach().cpu().numpy())
+
+    if not preds:
+        raise ValueError("Cannot evaluate an empty dataloader.")
+
+    pred_seg = np.concatenate(preds).reshape(-1)
+    gt_seg, gt_mode = _segment_gt_from_gt(gt, total_T=len(pred_seg), frame_repeat=frame_repeat)
+
+    rec_auc = roc_auc_score(gt_seg, pred_seg)
+    pr_auc = average_precision_score(gt_seg, pred_seg)
+
+    print(f"[test] GT mode: {gt_mode}, segments: {len(pred_seg)}, AUC: {rec_auc:.6f}, AP: {pr_auc:.6f}")
+    return rec_auc, pr_auc
 
 
 def _segment_gt_from_gt(gt, total_T, frame_repeat=16):
@@ -750,7 +774,7 @@ def export_demo_jsons(
 
 if __name__ == '__main__':
     args = option.parser.parse_args()
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 1. GT / dataset
     gt = np.load(args.gt)
@@ -760,20 +784,18 @@ if __name__ == '__main__':
     )
     X_flat = ucf_test_dataset.con_all
     nalist = ucf_test_dataset.nalist
-    #nalist = np.load(args.nalist_path)
     print("X_flat shape:", X_flat.shape)
     print("nalist shape:", nalist.shape)
 
     # 2. adapter
     adapter = ResidualAdapter2048(d=2048, use_ln = True).to(device)
-    torch.save(adapter.state_dict(), "adapter_init.pt") #baseline adapter 고정(저장) - 초기 1번만
-    adapter.load_state_dict(torch.load("adapter_init.pt",  map_location=device))
     adapter.eval()
 
     # 3. model
     model = Model_V2_AllCNN(args.feature_size).to(device)
-    model_dict = model.load_state_dict({k.replace('module.', ''): v for k, v in torch.load('unsupervised_ckpt/UCF_all_cnn_final_20260331_020353_wv5ldb2h.pkl').items()})
-
+    checkpoint = torch.load(args.ckpt_path, map_location=device)
+    model.load_state_dict({k.replace('module.', ''): v for k, v in checkpoint.items()})
+    
     model.eval()
     
 
