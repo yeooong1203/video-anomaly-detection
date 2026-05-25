@@ -1,18 +1,20 @@
 python test.py \
   --datasetname UCF \
-  --ckpt-path unsupervised_ckpt/UCF_all_cnn_best_20260514_030319_0k0lg0eg.pkl \
+  --ckpt-path unsupervised_ckpt/UCF_all_cnn_final_20260524_120551_hzu5jmq6.pkl \
   --test-conall-path ../C2FPL/Concat_test_10.npy \
   --test-nalist-path list/nalist_test_i3d.npy \
   --gt list/gt-ucf-R.npy \
   --video-list-path list/ucf-i3d_test_fixed_local.list \
   --feature-size 2048 \
   --frame-repeat 16 \
-  --batch-size 1\
+  --test-batch-size 1\
   --warmup-segments 5 \
   --tta-q 1.0 \
   --tta-min-keep 8 \
   --tta-lr 1e-2 \
   --tta-steps-per-video 30 \
   --output-dir demo_exports/UCF \
-  --plot-y 0.4\
+  --plot-y 0.4 \
+  --plot-y-tta 0.15 \
   --plot-threshold 0.36 \
+  --tta-plot-threshold 0.135 \

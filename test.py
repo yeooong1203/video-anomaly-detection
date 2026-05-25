@@ -597,8 +597,8 @@ def save_video_score_plots(
 ):
     """
     비디오별 score timeline plot 저장
-    - gt가 주어지면 실제 anomaly GT 구간을 빨간 음영으로 표시
-    - show_prefix=True면 warm-up prefix 구간을 회색 음영으로 표시
+    - 실제 anomaly GT 구간을 빨간 음영으로
+    - show_prefix=True면 warm-up prototype 구간을 회색 음영으로
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -655,7 +655,10 @@ def save_video_score_plots(
         plt.title(f"{name} | vid_idx={vid_idx} | T={e-s}")
         plt.xlabel("segment index")
         plt.ylabel("anomaly score")
-        plt.ylim(0.0, args.plot_y)
+        if threshold == args.tta_plot_threshold:
+            plt.ylim(0.0, args.plot_y)
+        else:
+            plt.ylim(0.0, args.plot_y_tta)
         plt.tight_layout()
 
         handles, labels = plt.gca().get_legend_handles_labels()
@@ -828,8 +831,8 @@ if __name__ == '__main__':
         device=device,
         frame_repeat=args.frame_repeat,
         use_tta=False,          
-        adapt_prefix_only=False,          # baseline -> 적응 안 함
-        exclude_prefix_from_eval=True,    # suffix만 평가
+        adapt_prefix_only=False,          # 적응 안 함
+        exclude_prefix_from_eval=True,    # normal prototype 제외 평가
         warmup_segments=args.warmup_segments,
     )
 
@@ -852,9 +855,9 @@ if __name__ == '__main__':
     min_keep=args.tta_min_keep,
     tta_lr=args.tta_lr,
     tta_steps_per_video=args.tta_steps_per_video,
-    adapt_prefix_only=True,           # prefix 안에서만 selection/update
-    exclude_prefix_from_eval=True,    # suffix만 평가
-    warmup_segments=args.warmup_segments,                # adaptation pool 지정 (prefix)
+    adapt_prefix_only=True,           # normal prototype으로 update
+    exclude_prefix_from_eval=True,    # normal prototype 제외 평가
+    warmup_segments=args.warmup_segments,                
     )
 
     print("\n[PREFIX WARM-UP tta]")
@@ -903,7 +906,7 @@ if __name__ == '__main__':
         nalist=nalist,
         out_dir=Path(args.output_dir) / "tta_plots",
         video_names=video_names,
-        threshold=args.plot_threshold,
+        threshold=args.tta_plot_threshold,
         gt=gt,
         frame_repeat=args.frame_repeat,
         show_gt=True,

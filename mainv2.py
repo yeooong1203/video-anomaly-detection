@@ -44,23 +44,32 @@ if __name__ == '__main__':
 
     test_loader = DataLoader(
         UCFTestVideoDataset(args.test_conall_path, args.test_nalist_path),
-        batch_size=1, shuffle=False,
-        num_workers=args.workers, pin_memory=False, drop_last=False
+        batch_size=args.test_batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=False, drop_last=True
     )
     
-    train_loader = DataLoader(
-            UCFTrainVideoDataset_Stratified(
-                conall_path=args.train_conall_path,
-                pseudo_path=args.pseudofile,
-                nalist_path=args.train_nalist_path
-            ),
-            batch_size=args.batch_size_video,
-            shuffle=True,
-            num_workers=0,
-            pin_memory=True,
-            drop_last=True,
-            collate_fn=collate_fn_variable_length 
+    train_dataset = UCFTrainVideoDataset_Stratified(
+    conall_path=args.train_conall_path,
+    pseudo_path=args.pseudofile,
+    nalist_path=args.train_nalist_path,
+    window_size=args.window_size,
+    stride=args.stride,
     )
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.train_batch_size,
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,
+        drop_last=False,
+        collate_fn=collate_fn_variable_length
+    )
+
+    print("train_dataset len:", len(train_dataset))
+    print("train_loader.dataset len:", len(train_loader.dataset))
+    print("train_loader len:", len(train_loader))
+    print("batch_size_video:", args.train_batch_size)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = Model_V2_AllCNN(args.feature_size, kernel_size=args.temporal_kernel)
@@ -81,7 +90,7 @@ if __name__ == '__main__':
         nesterov=True
     )
 
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 35], gamma=0.1)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 35], gamma=0.1)
     
     auc, ap = test(test_loader, model, args, device)
     print(f"\nEpoch 0 - AUC: {auc:.4f}, AP: {ap:.4f}")

@@ -2,7 +2,9 @@ python mainv2.py \
     --datasetname UCF \
     --model_type all_cnn \
     --feature-size 2048 \
-    --batch_size_video 32 \
+    --train_batch_size 32 \
+    --window-size 2000 \
+    --stride 2000 \
     --temporal_kernel 5 \
     --pseudofile Unsup_labels/pseudo_labels_swap_90.npy \
     --train-conall-path ../C2FPL/concat_UCF.npy \

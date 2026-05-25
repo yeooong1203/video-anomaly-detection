@@ -1,0 +1,16 @@
+python mainv2.py \
+    --datasetname ShanghaiTech \
+    --model_type all_cnn \
+    --feature-size 2048 \
+    --train_batch_size 8 \
+    --window-size 32 \
+    --stride 32 \
+    --temporal_kernel 5 \
+    --pseudofile Unsup_labels/SHT_pseudo_labels.npy \
+    --train-conall-path ../data/shanghaitech/processed/ShanghaiTech_GCN_train_features.npy \
+    --train-nalist-path ../data/shanghaitech/processed/ShanghaiTech_GCN_train_nalist.npy \
+    --test-conall-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_features.npy \
+    --test-nalist-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_nalist.npy \
+    --gt ../data/shanghaitech/processed/ShanghaiTech_GCN_test_gt_segment.npy\
+    --max-epoch 30 \
+    --lr 0.001

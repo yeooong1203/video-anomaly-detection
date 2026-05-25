@@ -4,7 +4,9 @@ parser = argparse.ArgumentParser(description='C2FPL')
 parser.add_argument('--feature-size', type=int, default=2048, help='size of feature (default: 2048)')
 parser.add_argument('--gt', default='list/gt-ucf-RTFM.npy', help='file of ground truth ')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate (default: 0.001)')
-parser.add_argument('--batch-size', type=int, default=128, help='number of instances in a batch of data')
+parser.add_argument('--test-batch-size', type=int, default=1)
+parser.add_argument('--window-size', type=int, default=2000)
+parser.add_argument('--stride', type=int, default=2000)
 parser.add_argument('--workers', type=int, default=0, help='number of workers in dataloader')
 parser.add_argument('--datasetname', default='UCF', help='dataset to train on (default: )')
 parser.add_argument('--max-epoch', type=int, default=100, help='maximum iteration to train (default: 100)')
@@ -20,7 +22,7 @@ parser.add_argument('--use_variable_length', action='store_true',
 parser.add_argument('--model_type', type=str, default='mlp',
                    choices=['mlp', 'temporal', 'lstm', 'all_cnn', 'all_lstm', 'hybrid_cnn'],
                    help='Model type: mlp (no temporal), temporal (Conv1d), lstm (LSTM)')
-parser.add_argument('--batch_size_video', type=int, default=8,
+parser.add_argument('--train_batch_size', type=int, default=32,
                    help='Batch size for video-level training')
 parser.add_argument('--accumulation_steps', type=int, default=1,
                    help='Gradient accumulation steps')
@@ -44,7 +46,9 @@ parser.add_argument('--tta-min-keep', type=int, default='8')
 parser.add_argument('--tta-lr', type=float, default='1e-2')
 parser.add_argument('--tta-steps-per-video', type=int, default='30')
 parser.add_argument('--plot-y', type=float, default='0.4')
+parser.add_argument('--plot-y-tta', type=float, default='0.15')
 parser.add_argument('--plot-threshold', type=float, default='0.36')
+parser.add_argument('--tta-plot-threshold', type=float, default='0.135')
 parser.add_argument('--selected-vid-indices', type=str, default='17,30,97,230')
 
 

@@ -26,6 +26,10 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
     num_batches = 0
     
     optimizer.zero_grad()
+
+    # --- effective token logging ---
+    total_valid_tokens = 0.0
+    total_batches = 0
     
     pbar = tqdm(train_loader, desc=f"Epoch {epoch}", dynamic_ncols=True)
     
@@ -44,6 +48,12 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
         loss = loss * masks
 
         num_valid = masks.sum()
+
+        # --- effective token logging ---
+        valid_tokens = float(num_valid.item())
+        total_valid_tokens += valid_tokens
+        total_batches += 1
+
         if num_valid > 0:
             loss = loss.sum() / num_valid
         else:
@@ -61,7 +71,8 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
         total_loss += loss.item() * accumulation_steps
         num_batches += 1
         
-        pbar.set_postfix({'loss': f'{loss.item() * accumulation_steps:.4f}'})
+        pbar.set_postfix({'loss': f'{loss.item() * accumulation_steps:.4f}',
+                              'valid_tok': f'{valid_tokens:.0f}'})
     
     if num_batches % accumulation_steps != 0:
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -69,5 +80,7 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
         optimizer.zero_grad()
     
     avg_loss = total_loss / num_batches
+    avg_valid_tokens = total_valid_tokens / max(total_batches, 1)
+    print(f"[epoch {epoch}] avg_valid_tokens_per_batch={avg_valid_tokens:.2f}, total_valid_tokens={total_valid_tokens:.0f}")
     
     return avg_loss
