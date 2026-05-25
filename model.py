@@ -7,10 +7,10 @@ class Model_V2_AllCNN(nn.Module):
     def __init__(self, n_features, kernel_size=5):
         super().__init__()
         
-        self.conv1 = nn.Conv1d(n_features, 256, kernel_size, padding=kernel_size//2)
+        self.conv1 = nn.Conv1d(n_features, 256, 3, padding=3//2)
         self.bn1 = nn.BatchNorm1d(256)
 
-        self.conv_att1 = nn.Conv1d(n_features, 256, kernel_size, padding=kernel_size//2)
+        self.conv_att1 = nn.Conv1d(n_features, 256, 3, padding=3//2)
         
         self.conv2 = nn.Conv1d(256, 64, kernel_size, padding=kernel_size//2)
         self.bn2 = nn.BatchNorm1d(64)
@@ -23,6 +23,7 @@ class Model_V2_AllCNN(nn.Module):
         self.dropout2 = nn.Dropout(0.4)
         self.gelu = nn.GELU()
         self.sigmoid = nn.Sigmoid()
+        self.alpha = nn.Parameter(torch.ones(1))
     
     def forward(self, inputs, return_logits=False):
         if inputs.dim() != 3:

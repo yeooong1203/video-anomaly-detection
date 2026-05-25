@@ -1,4 +1,10 @@
-Concat_test_10.npy
-concat_UCF.npy
-wandb/
+# Python cache
+__pycache__/
+*.pyc
 
+# dataset
+*.npy
+
+# logs & ouput folders
+wandb/
+demo_exports/

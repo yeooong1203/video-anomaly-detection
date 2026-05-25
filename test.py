@@ -13,7 +13,9 @@ import torch.nn.functional as F
 import json
 from pathlib import Path
     
-def test(dataloader, model, args, device, frame_repeat=16):
+args = option.parser.parse_args()
+
+def test(dataloader, model, args, device, frame_repeat=args.frame_repeat):
     model.eval()
     gt = np.load(args.gt, allow_pickle=True)
 
@@ -40,7 +42,7 @@ def test(dataloader, model, args, device, frame_repeat=16):
     return rec_auc, pr_auc
 
 
-def _segment_gt_from_gt(gt, total_T, frame_repeat=16):
+def _segment_gt_from_gt(gt, total_T, frame_repeat=args.frame_repeat):
     gt = np.asarray(gt).astype(np.int64).reshape(-1)
 
     if len(gt) == total_T:
@@ -86,7 +88,7 @@ def _normalize_video_feature_shape(x_video_np):
 
 
 # prefix warm-up 실험을 위한 helper 함수들 (앞 5개 segment로 적응, 평가에서는 제외) ------------------------------------------------------------------------
-def _split_prefix_suffix_video(x_video, warmup_segments=5):
+def _split_prefix_suffix_video(x_video, warmup_segments=args.warmup_segments):
     """
     x_video: torch tensor, (T, D)
     return:
@@ -99,7 +101,7 @@ def _split_prefix_suffix_video(x_video, warmup_segments=5):
     return x_prefix, prefix_len
 
 
-def _build_eval_mask_from_nalist(total_T, nalist, warmup_segments=5):
+def _build_eval_mask_from_nalist(total_T, nalist, warmup_segments=args.warmup_segments):
     """
     비디오별 prefix는 False, suffix는 True
     """
@@ -151,22 +153,22 @@ def load_video_names(list_path):
 
 
 # CORE---------------------------------------------------------------------------------
-def _tea_update_one_video(
+def _tta_update_one_video(
     x_video,          # torch tensor, (T_i, 1024)
     adapter_episode,
     model,
-    q=0.2,
-    min_keep=8,
+    q=args.tta_q,
+    min_keep=args.tta_min_keep,
     min_run=2,
-    tea_lr=1e-3,
-    tea_steps_per_video=1,
+    tta_lr=args.tta_lr,
+    tta_steps_per_video=args.tta_steps_per_video,
 
     n_reference=5,
     proto_l2_normalize=False,
 
     # prefix only adaptation & suffix evaluation 을 위한 인자들
     adapt_prefix_only=False,
-    warmup_segments=5,
+    warmup_segments=args.warmup_segments,
 ):
     """
     비디오 하나에 대해 adapter_episode.ln만 업데이트.
@@ -178,7 +180,7 @@ def _tea_update_one_video(
         p.requires_grad_(False)
 
     if not hasattr(adapter_episode, "ln"):
-        raise ValueError("adapter_episode must have .ln for LN-only TEA")
+        raise ValueError("adapter_episode must have .ln for LN-only tta")
 
     # adapter 전체 freeze, LN만 update
     adapter_episode.train()
@@ -192,7 +194,7 @@ def _tea_update_one_video(
 
     optimizer = torch.optim.Adam(
         [adapter_episode.ln.weight, adapter_episode.ln.bias],
-        lr=tea_lr
+        lr=tta_lr
     )
 
     debug = []
@@ -211,7 +213,7 @@ def _tea_update_one_video(
         #E_ref_init = F.softplus(logit_ref[0, :, 0]).mean().item() 
 
 
-    for step_idx in range(tea_steps_per_video):
+    for step_idx in range(tta_steps_per_video):
         # adaptation pool 결정
         if adapt_prefix_only:
             x_adapt, prefix_len = _split_prefix_suffix_video(
@@ -269,7 +271,7 @@ def _tea_update_one_video(
         E_real = (w * F.softplus(logit_real)).sum()       
         #E_real = F.softplus(logit_real).mean()
 
-        # 4) TEA loss 
+        # 4) tta loss 
         #loss = F.relu(E_real - E_fake)
         loss = E_real
 
@@ -302,28 +304,28 @@ def _tea_update_one_video(
 
 
 # 전체 evaluation용 함수
-def eval_xd_with_episodic_tea(
+def eval_xd_with_episodic_tta(
     X_flat,              # numpy, (total_T, 1024)
     nalist,              # numpy, (num_videos, 2)
     gt,                  # numpy, (total_T,) or (total_T*16,)
     adapter,
     model,
     device,
-    frame_repeat=16,
+    frame_repeat=args.frame_repeat,
 
-    use_tea=True,
-    q=0.2,
-    min_keep=8,
+    use_tta=True,
+    q=args.tta_q,
+    min_keep=args.tta_min_keep,
     min_run = 2,
-    tea_lr=1e-3,
-    tea_steps_per_video=1,
+    tta_lr=args.tta_lr,
+    tta_steps_per_video=args.tta_steps_per_video,
 
     n_reference=5,
     proto_l2_normalize=False,
 
     exclude_prefix_from_eval=False,
     adapt_prefix_only=False,
-    warmup_segments=5,
+    warmup_segments=args.warmup_segments,
 
     verbose_every=100,
 ):
@@ -336,7 +338,7 @@ def eval_xd_with_episodic_tea(
         p.requires_grad_(False)
 
     seg_scores_all = np.zeros(total_T, dtype=np.float32)
-    tea_logs = []
+    tta_logs = []
 
     for vid_idx in range(len(nalist)):
         s, e = nalist[vid_idx]
@@ -348,17 +350,17 @@ def eval_xd_with_episodic_tea(
         adapter_episode = copy.deepcopy(adapter).to(device)
         adapter_episode.eval()
         
-        # 1) optional TEA
-        if use_tea:
-            adapter_episode, debug = _tea_update_one_video(
+        # 1) optional tta
+        if use_tta:
+            adapter_episode, debug = _tta_update_one_video(
                 x_video=x_video,
                 adapter_episode=adapter_episode,
                 model=model,
                 q=q,
                 min_keep=min_keep,
                 min_run=min_run,
-                tea_lr=tea_lr,
-                tea_steps_per_video=tea_steps_per_video,
+                tta_lr=args.tta_lr,
+                tta_steps_per_video=tta_steps_per_video,
                 n_reference=n_reference,
                 proto_l2_normalize=proto_l2_normalize,
                 adapt_prefix_only=adapt_prefix_only,
@@ -382,7 +384,7 @@ def eval_xd_with_episodic_tea(
         seg_scores_all[s:e] = prob
 
         if debug is not None:
-            tea_logs.append({
+            tta_logs.append({
                 "vid_idx": vid_idx,
                 "start": int(s),
                 "end": int(e),
@@ -427,7 +429,7 @@ def eval_xd_with_episodic_tea(
         "auc": float(auc),
         "ap": float(ap),
         "seg_scores_all": seg_scores_all,
-        "tea_logs": tea_logs,
+        "tta_logs": tta_logs,
         "eval_mask_seg": eval_mask_seg,
     }
 
@@ -435,14 +437,14 @@ def eval_xd_with_episodic_tea(
 # Analysis ---------------------------------------------------------------------------------
 def bootstrap_video_ci(
     seg_scores_base,     # (total_T,)
-    seg_scores_tea,      # (total_T,)
+    seg_scores_tta,      # (total_T,)
     nalist,              # (num_videos, 2)
     gt,                  # (total_T,) or (total_T*16,)
-    frame_repeat=16,
+    frame_repeat=args.frame_repeat,
     n_boot=1000,
     seed=42,
     exclude_prefix_from_eval=False,
-    warmup_segments=5,
+    warmup_segments=args.warmup_segments,
 ):
     rng = np.random.default_rng(seed)
 
@@ -473,7 +475,7 @@ def bootstrap_video_ci(
 
         y_true_parts = []
         y_base_parts = []
-        y_tea_parts = []
+        y_tta_parts = []
 
         for vid_idx in boot_vids:
             s, e = nalist[vid_idx]
@@ -493,25 +495,25 @@ def bootstrap_video_ci(
             if gt_mode == "segment":
                 y_true_parts.append(seg_gt[s_eval:e_eval])
                 y_base_parts.append(seg_scores_base[s_eval:e_eval])
-                y_tea_parts.append(seg_scores_tea[s_eval:e_eval])
+                y_tta_parts.append(seg_scores_tta[s_eval:e_eval])
             else:
                 # frame-level metric과 맞추기 위해 segment score를 16번 반복
                 y_true_parts.append(gt[s_eval*frame_repeat:e_eval*frame_repeat])
                 y_base_parts.append(np.repeat(seg_scores_base[s_eval:e_eval], frame_repeat))
-                y_tea_parts.append(np.repeat(seg_scores_tea[s_eval:e_eval], frame_repeat))
+                y_tta_parts.append(np.repeat(seg_scores_tta[s_eval:e_eval], frame_repeat))
 
         y_true = np.concatenate(y_true_parts)
         y_base = np.concatenate(y_base_parts)
-        y_tea = np.concatenate(y_tea_parts)
+        y_tta = np.concatenate(y_tta_parts)
 
         auc_base = roc_auc_score(y_true, y_base)
         ap_base = average_precision_score(y_true, y_base)
 
-        auc_tea = roc_auc_score(y_true, y_tea)
-        ap_tea = average_precision_score(y_true, y_tea)
+        auc_tta = roc_auc_score(y_true, y_tta)
+        ap_tta = average_precision_score(y_true, y_tta)
 
-        delta_auc_list.append(auc_tea - auc_base)
-        delta_ap_list.append(ap_tea - ap_base)
+        delta_auc_list.append(auc_tta - auc_base)
+        delta_ap_list.append(ap_tta - ap_base)
 
     delta_auc = np.array(delta_auc_list)
     delta_ap = np.array(delta_ap_list)
@@ -522,7 +524,7 @@ def bootstrap_video_ci(
     auc_ci = ci95(delta_auc)
     ap_ci = ci95(delta_ap)
 
-    print("[Bootstrap Δ = TEA - Baseline]")
+    print("[Bootstrap Δ = tta - Baseline]")
     print(f"ΔAUC median={auc_ci[1]:.6f}, 95% CI=({auc_ci[0]:.6f}, {auc_ci[2]:.6f})")
     print(f"ΔAP  median={ap_ci[1]:.6f}, 95% CI=({ap_ci[0]:.6f}, {ap_ci[2]:.6f})")
 
@@ -588,10 +590,10 @@ def save_video_score_plots(
     threshold=None,
     top_n=None,
     gt=None,
-    frame_repeat=16,
+    frame_repeat=args.frame_repeat,
     show_gt=True,
     show_prefix=False,
-    warmup_segments=5,
+    warmup_segments=args.warmup_segments,
 ):
     """
     비디오별 score timeline plot 저장
@@ -653,7 +655,7 @@ def save_video_score_plots(
         plt.title(f"{name} | vid_idx={vid_idx} | T={e-s}")
         plt.xlabel("segment index")
         plt.ylabel("anomaly score")
-        plt.ylim(0.0, 0.3)
+        plt.ylim(0.0, args.plot_y)
         plt.tight_layout()
 
         handles, labels = plt.gca().get_legend_handles_labels()
@@ -676,8 +678,8 @@ def export_demo_jsons(
     out_dir,
     video_names=None,
     fps=30,
-    frames_per_seg=16,
-    warmup_segments=5,
+    frames_per_seg=args.frame_repeat,
+    warmup_segments=args.warmup_segments,
     display_reference=0.10,
     selected_vid_indices=None,
     actual_video_duration_map=None,
@@ -799,17 +801,16 @@ if __name__ == '__main__':
     model.eval()
     
 
-    # baseline (TEA 없음)
-    res_base = eval_xd_with_episodic_tea(
+    # baseline (tta 없음, t = 1 ~ T 모두 평가) BUT adapter는 통과함. 
+    res_base = eval_xd_with_episodic_tta(
         X_flat=X_flat,
         nalist=nalist,
         gt=gt,
         adapter=adapter,
         model=model,
         device=device,
-        frame_repeat=16,
-
-        use_tea=False,
+        frame_repeat=args.frame_repeat,
+        use_tta=False,
         verbose_every=100,
     )
     print("\n[BASELINE]")
@@ -817,128 +818,125 @@ if __name__ == '__main__':
     print("AP :", res_base["ap"])
 
     
-    # warm up baseline (prefix 적응은 안하지만 suffix만 평가)
-    res_base_warm = eval_xd_with_episodic_tea(
+    # TTA baseline (tta 없음, t = k ~ T 만 평가)
+    res_tta_base = eval_xd_with_episodic_tta(
         X_flat=X_flat,
         nalist=nalist,
         gt=gt,
         adapter=adapter,
         model=model,
         device=device,
-        frame_repeat=16,
-
-        use_tea=False,          
-
+        frame_repeat=args.frame_repeat,
+        use_tta=False,          
         adapt_prefix_only=False,          # baseline -> 적응 안 함
         exclude_prefix_from_eval=True,    # suffix만 평가
-        warmup_segments=5,
+        warmup_segments=args.warmup_segments,
     )
 
     print("\n[BASELINE - SUFFIX ONLY]")
-    print("AUC:", res_base_warm["auc"])
-    print("AP :", res_base_warm["ap"])
+    print("AUC:", res_tta_base["auc"])
+    print("AP :", res_tta_base["ap"])
 
     
-    # warm up (prefix 적응, suffix만 평가)
-    res_tea_warm = eval_xd_with_episodic_tea(
+    # TTA (tta 있음, t = k ~ T 만 평가)
+    res_tta = eval_xd_with_episodic_tta(
     X_flat=X_flat,
     nalist=nalist,
     gt=gt,
     adapter=adapter,
     model=model,
     device=device,
-    frame_repeat=16,
-
-    use_tea=True,
-
-    q=1.0,   
-    min_keep=8,
-    tea_lr=1e-2,
-    tea_steps_per_video=30,
+    frame_repeat=args.frame_repeat,
+    use_tta=True,
+    q=args.tta_q,   
+    min_keep=args.tta_min_keep,
+    tta_lr=args.tta_lr,
+    tta_steps_per_video=args.tta_steps_per_video,
     adapt_prefix_only=True,           # prefix 안에서만 selection/update
     exclude_prefix_from_eval=True,    # suffix만 평가
-    warmup_segments=5,                # adaptation pool 지정 (prefix)
+    warmup_segments=args.warmup_segments,                # adaptation pool 지정 (prefix)
     )
 
-    print("\n[PREFIX WARM-UP TEA]")
-    print("AUC:", res_tea_warm["auc"])
-    print("AP :", res_tea_warm["ap"])
+    print("\n[PREFIX WARM-UP tta]")
+    print("AUC:", res_tta["auc"])
+    print("AP :", res_tta["ap"])
     
 
     # --------------------------------------------------
     # Demo candidate analysis / export
     # --------------------------------------------------
-    # 비디오 이름 로드
-    video_names = load_video_names("list/ucf-i3d_test_fixed_local.list")
+    video_names = load_video_names(args.video_list_path)
     
-    # 1) baseline 후보 영상 요약 csv
+    # 1) baseline csv
     base_rows = summarize_demo_candidates(
-        seg_scores_all=res_base["seg_scores_all"],
+        seg_scores_all=res_tta_base["seg_scores_all"],
         nalist=nalist,
-        out_csv_path="demo_exports/base_candidate_summary.csv",
+        out_csv_path=Path(args.output_dir) / "tta_base_candidate_summary.csv",
         video_names=video_names,
         top_k_mean=5,
     )
 
     # 2) baseline 전체 score plot 저장
     save_video_score_plots(
-        seg_scores_all=res_base["seg_scores_all"],
+        seg_scores_all=res_tta_base["seg_scores_all"],
         nalist=nalist,
-        out_dir="demo_exports/base_plots",
+        out_dir=Path(args.output_dir) / "tta_base_plots",
         video_names=video_names,
-        threshold=0.2,
+        threshold=args.plot_threshold,
         gt=gt,
-        frame_repeat=16,
+        frame_repeat=args.frame_repeat,
         show_gt=True,
         show_prefix=False,
     )
 
-    # 3) warm-up TEA 쪽도 같이 보고 싶으면 저장
-    tea_rows = summarize_demo_candidates(
-        seg_scores_all=res_tea_warm["seg_scores_all"],
+    # 3) TTA csv
+    tta_rows = summarize_demo_candidates(
+        seg_scores_all=res_tta["seg_scores_all"],
         nalist=nalist,
-        out_csv_path="demo_exports/tea_warm_candidate_summary.csv",
+        out_csv_path=Path(args.output_dir) / "tta_candidate_summary.csv",
         video_names=video_names,
         top_k_mean=5,
     )
 
     save_video_score_plots(
-        seg_scores_all=res_tea_warm["seg_scores_all"],
+        seg_scores_all=res_tta["seg_scores_all"],
         nalist=nalist,
-        out_dir="demo_exports/tea_warm_plots",
+        out_dir=Path(args.output_dir) / "tta_plots",
         video_names=video_names,
-        threshold=0.2,
+        threshold=args.plot_threshold,
         gt=gt,
-        frame_repeat=16,
+        frame_repeat=args.frame_repeat,
         show_gt=True,
         show_prefix=True,
-        warmup_segments=5,
+        warmup_segments=args.warmup_segments,
     )
 
+    '''
     # 4) vid_idx를 넣어서 JSON export
     selected_vid_indices = [17, 30, 97, 230]
 
     export_demo_jsons(
-        seg_scores_adapted=res_tea_warm["seg_scores_all"],
-        seg_scores_baseline=res_base["seg_scores_all"],   # 추가
+        seg_scores_adapted=res_tta["seg_scores_all"],
+        seg_scores_baseline=res_tta_base["seg_scores_all"],   # 추가
         nalist=nalist,
-        out_dir="demo_exports/demo_json_base",
+        out_dir=Path(args.output_dir) / "demo_json_base",
         video_names=video_names,
         fps=30,
-        frames_per_seg=16,
-        warmup_segments=5,
+        frames_per_seg=args.frame_repeat,
+        warmup_segments=args.warmup_segments,
         display_reference=0.10,
         selected_vid_indices=selected_vid_indices,
         actual_video_duration_map=None,
     )
-    
+    '''
+
     #부트스트랩으로 확인
     boot_res = bootstrap_video_ci(
-        seg_scores_base=res_base_warm["seg_scores_all"],
-        seg_scores_tea=res_tea_warm["seg_scores_all"],
+        seg_scores_base=res_tta_base["seg_scores_all"],
+        seg_scores_tta=res_tta["seg_scores_all"],
         nalist=nalist,
         gt=gt,
-        frame_repeat=16,
+        frame_repeat=args.frame_repeat,
         n_boot=1000,
         seed=42,
     )

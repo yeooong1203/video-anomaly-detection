@@ -1,12 +1,18 @@
 python test.py \
-    --lossfn BCE \
-    --optimizer SGD \
-    --max-epoch 20 \
-    --batch-size 1\
-    --lr 0.01\
-    --feature-size 2048\
-    --gt list/gt-ucf-RTFM.npy\
-    --datasetname UCF \
-    --windowsize 0.15\
-    --pseudofile Unsup_labels/pseudo_labels_swap_90.npy\
-    --conall concat_UCF\
+  --datasetname UCF \
+  --ckpt-path unsupervised_ckpt/UCF_all_cnn_best_20260514_030319_0k0lg0eg.pkl \
+  --test-conall-path ../C2FPL/Concat_test_10.npy \
+  --test-nalist-path list/nalist_test_i3d.npy \
+  --gt list/gt-ucf-R.npy \
+  --video-list-path list/ucf-i3d_test_fixed_local.list \
+  --feature-size 2048 \
+  --frame-repeat 16 \
+  --batch-size 1\
+  --warmup-segments 5 \
+  --tta-q 1.0 \
+  --tta-min-keep 8 \
+  --tta-lr 1e-2 \
+  --tta-steps-per-video 30 \
+  --output-dir demo_exports/UCF \
+  --plot-y 0.4\
+  --plot-threshold 0.36 \
