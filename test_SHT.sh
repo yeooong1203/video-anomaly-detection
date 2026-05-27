@@ -1,6 +1,6 @@
 python test.py \
   --datasetname ShanghaiTech \
-  --ckpt-path unsupervised_ckpt/ShanghaiTech_all_cnn_final_20260526_042802_gs7qhtr9.pkl \
+  --ckpt-path unsupervised_ckpt/ShanghaiTech_all_cnn_final_20260527_064339_qvnzrn6a.pkl \
   --test-conall-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_features.npy \
   --test-nalist-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_nalist.npy \
   --gt ../data/shanghaitech/processed/ShanghaiTech_GCN_test_gt_segment.npy\
@@ -8,13 +8,10 @@ python test.py \
   --feature-size 2048 \
   --frame-repeat 16 \
   --test-batch-size 1\
-  --warmup-segments 4 \
+  --warmup-segments 5 \
   --tta-q 1.0 \
-  --tta-min-keep 8 \
+  --tta-min-keep 3 \
   --tta-lr 1e-2 \
   --tta-steps-per-video 30 \
   --output-dir demo_exports/SHT \
-  --plot-y 0.4\
-  --plot-y-tta 0.15 \
-  --plot-threshold 0.36 \
-  --tta-plot-threshold 0.135 \
+  --plot-y 0.35 \

@@ -22,7 +22,7 @@ parser.add_argument('--use_variable_length', action='store_true',
 parser.add_argument('--model_type', type=str, default='mlp',
                    choices=['mlp', 'temporal', 'lstm', 'all_cnn', 'all_lstm', 'hybrid_cnn'],
                    help='Model type: mlp (no temporal), temporal (Conv1d), lstm (LSTM)')
-parser.add_argument('--train_batch_size', type=int, default=32,
+parser.add_argument('--train-batch-size', type=int, default=32,
                    help='Batch size for video-level training')
 parser.add_argument('--accumulation_steps', type=int, default=1,
                    help='Gradient accumulation steps')
@@ -46,9 +46,6 @@ parser.add_argument('--tta-min-keep', type=int, default='8')
 parser.add_argument('--tta-lr', type=float, default='1e-2')
 parser.add_argument('--tta-steps-per-video', type=int, default='30')
 parser.add_argument('--plot-y', type=float, default='0.4')
-parser.add_argument('--plot-y-tta', type=float, default='0.15')
-parser.add_argument('--plot-threshold', type=float, default='0.36')
-parser.add_argument('--tta-plot-threshold', type=float, default='0.135')
 parser.add_argument('--selected-vid-indices', type=str, default='17,30,97,230')
 
 

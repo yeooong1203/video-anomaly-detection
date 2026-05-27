@@ -162,11 +162,6 @@ def _tta_update_one_video(
     min_run=2,
     tta_lr=args.tta_lr,
     tta_steps_per_video=args.tta_steps_per_video,
-
-    n_reference=5,
-    proto_l2_normalize=False,
-
-    # prefix only adaptation & suffix evaluation 을 위한 인자들
     adapt_prefix_only=False,
     warmup_segments=args.warmup_segments,
 ):
@@ -200,18 +195,25 @@ def _tta_update_one_video(
     debug = []
     with torch.no_grad():
         if adapt_prefix_only:
-            x_adapt, prefix_len = _split_prefix_suffix_video(
+            x_prefix_init, prefix_len_init = _split_prefix_suffix_video(
                 x_video, warmup_segments=warmup_segments
             )
         else:
             x_adapt = x_video
             prefix_len = x_video.shape[0]
-
+        '''
         x_ref_in = x_adapt.unsqueeze(0)                          # (1, T, 1024)
         x_ref_2048 = adapter_episode(x_ref_in)                   # (1, T, 2048)
         _, logit_ref = model(x_ref_2048, return_logits=True)     # (1, T, 1)
         #E_ref_init = F.softplus(logit_ref[0, :, 0]).mean().item() 
+        '''
+        x_prefix_init_in = x_prefix_init.unsqueeze(0)
+        x_prefix_init_adapted = adapter_episode(x_prefix_init_in)
+        _, logit_prefix_init = model(x_prefix_init_adapted, return_logits=True)
+        logit_prefix_init = logit_prefix_init[0, :, 0].detach()
 
+        # finite target: do not push prefix logits to -infinity
+        target_logit = logit_prefix_init.median() - 0.3
 
     for step_idx in range(tta_steps_per_video):
         # adaptation pool 결정
@@ -268,16 +270,60 @@ def _tta_update_one_video(
         tau = 0.3    
         with torch.no_grad():
             w = torch.softmax(-prob_sel / tau, dim=0)  # (N,)  lower prob_sel = higher weight
-        E_real = (w * F.softplus(logit_real)).sum()       
+        #E_real = (w * F.softplus(logit_real)).sum()       
         #E_real = F.softplus(logit_real).mean()
+        
+        
+        # --------------------------------------------------
+        # Prefix-only conservative TTA loss
+        # --------------------------------------------------
+        # 1) Margin loss:
+        #    Lower prefix logits only until they become smaller than target_logit.
+        L_margin = (w * F.relu(logit_real - target_logit)).sum()
 
+        # 2) LayerNorm regularization:
+        #    Prevent global score collapse by limiting LN parameter drift.
+        L_reg = (
+            F.mse_loss(adapter_episode.ln.weight, ln_weight_init)
+            + F.mse_loss(adapter_episode.ln.bias, ln_bias_init)
+        )
+        lambda_reg = 0.05
+        loss = L_margin + lambda_reg * L_reg
+        E_real = L_margin
+        
+        
         # 4) tta loss 
-        #loss = F.relu(E_real - E_fake)
         loss = E_real
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
+
+        # --------------------------------------------------
+        # Trust-region clamp for LayerNorm parameters
+        # No suffix information is used.
+        # --------------------------------------------------
+        max_delta_gamma = 0.05
+        max_delta_beta = 0.05
+
+        with torch.no_grad():
+            adapter_episode.ln.weight.copy_(
+                ln_weight_init
+                + torch.clamp(
+                    adapter_episode.ln.weight - ln_weight_init,
+                    -max_delta_gamma,
+                    max_delta_gamma,
+                )
+            )
+            adapter_episode.ln.bias.copy_(
+                ln_bias_init
+                + torch.clamp(
+                    adapter_episode.ln.bias - ln_bias_init,
+                    -max_delta_beta,
+                    max_delta_beta,
+                )
+            )
+
 
         debug.append({
             "step": step_idx,
@@ -298,6 +344,9 @@ def _tta_update_one_video(
             "adapt_prefix_only": adapt_prefix_only,
             "prefix_len": int(prefix_len),
             "adapt_pool_size": int(x_adapt.shape[0]),
+            "L_margin": float(L_margin.item()),
+            "L_reg": float(L_reg.item()),
+            "target_logit": float(target_logit.item()),
         })
 
     return adapter_episode, debug
@@ -312,21 +361,15 @@ def eval_xd_with_episodic_tta(
     model,
     device,
     frame_repeat=args.frame_repeat,
-
     use_tta=True,
     q=args.tta_q,
     min_keep=args.tta_min_keep,
     min_run = 2,
     tta_lr=args.tta_lr,
     tta_steps_per_video=args.tta_steps_per_video,
-
-    n_reference=5,
-    proto_l2_normalize=False,
-
     exclude_prefix_from_eval=False,
     adapt_prefix_only=False,
     warmup_segments=args.warmup_segments,
-
     verbose_every=100,
 ):
 
@@ -361,25 +404,22 @@ def eval_xd_with_episodic_tta(
                 min_run=min_run,
                 tta_lr=args.tta_lr,
                 tta_steps_per_video=tta_steps_per_video,
-                n_reference=n_reference,
-                proto_l2_normalize=proto_l2_normalize,
                 adapt_prefix_only=adapt_prefix_only,
                 warmup_segments=warmup_segments,
             )
         else:
             debug = None
-        
+  
 
         # 2) adaptation 후 최종 inference
         adapter_episode.eval()
         with torch.no_grad():
             x_video_in = x_video.unsqueeze(0)                 # (1,T,1024)
             x_2048 = adapter_episode(x_video_in)              # (1,T,2048)
-            #x_2048 = adapter_episode(x_video)
             prob, _ = model(x_2048, return_logits=True)
 
         #prob = prob.squeeze(-1).detach().cpu().numpy()     # (T_i,)
-        prob = prob[0, :, 0].detach().cpu().numpy()
+        prob = prob[0, :, 0].detach().cpu().numpy() 
 
         seg_scores_all[s:e] = prob
 
@@ -409,7 +449,7 @@ def eval_xd_with_episodic_tta(
         y_true = seg_gt[eval_mask_seg]
         y_score = seg_scores_all[eval_mask_seg]
     else:
-        # segment score를 16배 반복해서 frame-level score로 맞춤
+        # segment score 16배 반복해서 frame-level score로 맞춤
         y_true = np.asarray(gt).reshape(-1)
         y_score = np.repeat(seg_scores_all, frame_repeat)
         eval_mask_frame = np.repeat(eval_mask_seg, frame_repeat)
@@ -535,15 +575,8 @@ def bootstrap_video_ci(
         "ap_ci95": ap_ci,
     }
 
-
+# 비디오별 점수 요약 csv 저장 (max score, mean score, top-k 평균, 길이(T))
 def summarize_demo_candidates(seg_scores_all, nalist, out_csv_path, video_names=None, top_k_mean=5):
-    """
-    비디오별 점수 요약 csv 저장:
-    - max score
-    - mean score
-    - top-k 평균
-    - 길이(T)
-    """
     rows = []
 
     for vid_idx in range(len(nalist)):
@@ -582,6 +615,7 @@ def summarize_demo_candidates(seg_scores_all, nalist, out_csv_path, video_names=
     return rows
 
 
+# 비디오별 score timeline plot 저장
 def save_video_score_plots(
     seg_scores_all,
     nalist,
@@ -594,72 +628,148 @@ def save_video_score_plots(
     show_gt=True,
     show_prefix=False,
     warmup_segments=args.warmup_segments,
+    use_frame_axis=True,
 ):
     """
-    비디오별 score timeline plot 저장
-    - 실제 anomaly GT 구간을 빨간 음영으로
-    - show_prefix=True면 warm-up prototype 구간을 회색 음영으로
+    use_frame_axis=True:
+      - segment-level score를 frame_repeat만큼 반복해서 frame 축으로 그림
+      - x축: Frames
+      - GT도 frame-level 기준으로 표시
+
+    use_frame_axis=False:
+      - segment 축으로 그림
+      - x축: Segment
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     num_videos = len(nalist) if top_n is None else min(top_n, len(nalist))
+    total_T = int(nalist[-1, 1])
 
-    # 전체 GT를 segment-level로 통일
+    # Prepare GT
     seg_gt_all = None
-    if gt is not None:
-        total_T = int(nalist[-1, 1])
-        seg_gt_all, gt_mode = _segment_gt_from_gt(gt, total_T, frame_repeat=frame_repeat)
-        print(f"[plot] GT mode: {gt_mode} -> segment-level GT for plotting")
+    frame_gt_all = None
 
+    if gt is not None:
+        gt_raw = np.asarray(gt).astype(np.int64).reshape(-1)
+
+        if len(gt_raw) == total_T:
+            seg_gt_all = gt_raw
+            frame_gt_all = np.repeat(gt_raw, frame_repeat)
+            gt_mode = "segment"
+        elif len(gt_raw) == total_T * frame_repeat:
+            frame_gt_all = gt_raw
+            seg_gt_all = gt_raw.reshape(total_T, frame_repeat).max(axis=1)
+            gt_mode = "frame"
+        else:
+            raise ValueError(
+                f"[plot] GT length mismatch: len(gt)={len(gt_raw)}, "
+                f"total_T={total_T}, expected {total_T} or {total_T * frame_repeat}"
+            )
+
+        print(f"[plot] GT mode: {gt_mode}")
+
+    # Helper: shade anomaly intervals
+    def shade_runs(ax, binary_gt, alpha=0.18):
+        if binary_gt is None:
+            return
+
+        in_run = False
+        run_start = None
+
+        for idx, g in enumerate(binary_gt):
+            if g == 1 and not in_run:
+                in_run = True
+                run_start = idx
+            elif g == 0 and in_run:
+                ax.axvspan(
+                    run_start - 0.5,
+                    idx - 0.5,
+                    alpha=alpha,
+                    color="red",
+                    linewidth=0,
+                )
+                in_run = False
+                run_start = None
+
+        if in_run and run_start is not None:
+            ax.axvspan(
+                run_start - 0.5,
+                len(binary_gt) - 0.5,
+                alpha=alpha,
+                color="red",
+                linewidth=0,
+            )
+
+    # Plot each video
     for vid_idx in range(num_videos):
         s, e = map(int, nalist[vid_idx])
-        scores = np.asarray(seg_scores_all[s:e], dtype=np.float32)
+        seg_scores = np.asarray(seg_scores_all[s:e], dtype=np.float32)
 
-        if len(scores) == 0:
+        if len(seg_scores) == 0:
             continue
 
-        name = video_names[vid_idx] if video_names is not None and vid_idx < len(video_names) else f"video_{vid_idx}"
-        x = np.arange(len(scores))
+        name = (
+            video_names[vid_idx]
+            if video_names is not None and vid_idx < len(video_names)
+            else f"video_{vid_idx}"
+        )
 
-        plt.figure(figsize=(10, 3.5))
-        plt.plot(x, scores, linewidth=1.5, label="score")
+        if use_frame_axis:
+            # segment score -> frame score
+            scores = np.repeat(seg_scores, frame_repeat)
+            x = np.arange(len(scores))
+            xlabel = "frame index"
 
-        if threshold is not None:
-            plt.axhline(threshold, linestyle="--", label=f"threshold={threshold:.2f}")
+            # frame-level GT for this video
+            if frame_gt_all is not None:
+                frame_start = s * frame_repeat
+                frame_end = e * frame_repeat
+                gt_video = np.asarray(frame_gt_all[frame_start:frame_end], dtype=np.int64)
+            else:
+                gt_video = None
 
-        # prefix warm-up 구간 표시
-        if show_prefix and warmup_segments > 0:
-            prefix_len = min(warmup_segments, len(scores))
-            if prefix_len > 0:
-                plt.axvspan(-0.5, prefix_len - 0.5, alpha=0.12, color="gray", label="warm-up prefix")
-
-        # 실제 GT anomaly 구간 표시
-        if show_gt and seg_gt_all is not None:
-            seg_gt_video = np.asarray(seg_gt_all[s:e], dtype=np.int64)
-
-            in_run = False
-            run_start = None
-            for i, g in enumerate(seg_gt_video):
-                if g == 1 and not in_run:
-                    in_run = True
-                    run_start = i
-                elif g == 0 and in_run:
-                    plt.axvspan(run_start - 0.5, i - 0.5, alpha=0.22, color="red")
-                    in_run = False
-                    run_start = None
-
-            if in_run and run_start is not None:
-                plt.axvspan(run_start - 0.5, len(seg_gt_video) - 0.5, alpha=0.22, color="red")
-
-        plt.title(f"{name} | vid_idx={vid_idx} | T={e-s}")
-        plt.xlabel("segment index")
-        plt.ylabel("anomaly score")
-        if threshold == args.tta_plot_threshold:
-            plt.ylim(0.0, args.plot_y)
+            prefix_len = min(warmup_segments, len(seg_scores)) * frame_repeat
+            title = f"{name} | vid_idx={vid_idx} | T={e-s} seg / {len(scores)} frames"
+        
+        # segment plot
         else:
-            plt.ylim(0.0, args.plot_y_tta)
-        plt.tight_layout()
+            scores = seg_scores
+            x = np.arange(len(scores))
+            xlabel = "segment index"
+
+            if seg_gt_all is not None:
+                gt_video = np.asarray(seg_gt_all[s:e], dtype=np.int64)
+            else:
+                gt_video = None
+
+            prefix_len = min(warmup_segments, len(seg_scores))
+            title = f"{name} | vid_idx={vid_idx} | T={e-s}"
+
+        plt.figure(figsize=(6.4, 4.8))
+        plt.plot(x, scores, linewidth=1.2, label="score")
+
+        # normal prototype shading
+        if show_prefix and warmup_segments > 0 and prefix_len > 0:
+            plt.axvspan(
+                -0.5,
+                prefix_len - 0.5,
+                alpha=0.10,
+                color="gray",
+                linewidth=0,
+                label="warm-up prefix",
+            )
+
+        # GT anomaly shading
+        if show_gt and gt_video is not None:
+            shade_runs(plt.gca(), gt_video, alpha=0.18)
+
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel("anomaly score")
+
+        plt.ylim(0.0, args.plot_y)
+        plt.xlim(-0.5, len(scores) - 0.5)
 
         handles, labels = plt.gca().get_legend_handles_labels()
         uniq = dict(zip(labels, handles))
@@ -669,12 +779,145 @@ def save_video_score_plots(
         plt.tight_layout()
 
         safe_name = str(name).replace("/", "_").replace("\\", "_")
-        plt.savefig(out_dir / f"{vid_idx:03d}_{safe_name}.png", dpi=150)
+
+        if use_frame_axis:
+            out_stem = f"{vid_idx:03d}_{safe_name}_frame"
+        else:
+            out_stem = f"{vid_idx:03d}_{safe_name}_segment"
+
+        plt.savefig(out_dir / f"{out_stem}.png", dpi=300, bbox_inches="tight")
         plt.close()
 
-    print(f"[saved] score plots -> {out_dir}")
+    unit = "frame" if use_frame_axis else "segment"
+    print(f"[saved] {unit}-level score plots -> {out_dir}")
 
 
+# latex용 plot 그리기 위해 필요한 데이터 저장 
+# - segment-level baseline/TTA score
+# - frame-level baseline/TTA score
+# - segment-level GT
+# - frame-level GT
+# - warm-up prefix length
+# - video name
+def export_paper_plot_data(
+    seg_scores_base,
+    seg_scores_tta,
+    nalist,
+    out_dir,
+    video_names=None,
+    gt=None,
+    frame_repeat=args.frame_repeat,
+    warmup_segments=args.warmup_segments,
+    selected_vid_indices=None,
+):
+    
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    total_T = int(nalist[-1, 1])
+    num_videos = len(nalist)
+
+    if selected_vid_indices is None:
+        selected_vid_indices = list(range(num_videos))
+    
+    # Prepare GT
+    seg_gt_all = None
+    frame_gt_all = None
+
+    if gt is not None:
+        gt_raw = np.asarray(gt).astype(np.int64).reshape(-1)
+
+        if len(gt_raw) == total_T:
+            seg_gt_all = gt_raw
+            frame_gt_all = np.repeat(gt_raw, frame_repeat)
+            gt_mode = "segment"
+        elif len(gt_raw) == total_T * frame_repeat:
+            frame_gt_all = gt_raw
+            seg_gt_all = gt_raw.reshape(total_T, frame_repeat).max(axis=1)
+            gt_mode = "frame"
+        else:
+            raise ValueError(
+                f"[export_paper_plot_data] GT length mismatch: "
+                f"len(gt)={len(gt_raw)}, total_T={total_T}, "
+                f"expected {total_T} or {total_T * frame_repeat}"
+            )
+
+        print(f"[export paper plot data] GT mode: {gt_mode}")
+
+    # Export selected videos
+    for vid_idx in selected_vid_indices:
+        if vid_idx < 0 or vid_idx >= num_videos:
+            print(
+                f"[skip] vid_idx={vid_idx} is out of range. "
+                f"Valid range: 0 ~ {num_videos - 1}"
+            )
+            continue
+
+        s, e = map(int, nalist[vid_idx])
+
+        base_scores = np.asarray(seg_scores_base[s:e], dtype=np.float32)
+        tta_scores = np.asarray(seg_scores_tta[s:e], dtype=np.float32)
+
+        if len(base_scores) == 0 or len(tta_scores) == 0:
+            print(f"[skip] empty score: vid_idx={vid_idx}, s={s}, e={e}")
+            continue
+
+        name = (
+            video_names[vid_idx]
+            if video_names is not None and vid_idx < len(video_names)
+            else f"video_{vid_idx}"
+        )
+
+        # segment-level GT
+        if seg_gt_all is not None:
+            seg_gt_video = np.asarray(seg_gt_all[s:e], dtype=np.int64)
+        else:
+            seg_gt_video = np.zeros(e - s, dtype=np.int64)
+
+        # frame-level score
+        base_frame_scores = np.repeat(base_scores, frame_repeat)
+        tta_frame_scores = np.repeat(tta_scores, frame_repeat)
+
+        # frame-level GT
+        frame_start = s * frame_repeat
+        frame_end = e * frame_repeat
+
+        if frame_gt_all is not None:
+            frame_gt_video = np.asarray(frame_gt_all[frame_start:frame_end], dtype=np.int64)
+        else:
+            frame_gt_video = np.repeat(seg_gt_video, frame_repeat)
+
+        safe_name = str(name).replace("/", "_").replace("\\", "_")
+
+        out_path = out_dir / f"paper_plot_vid{vid_idx:03d}_{safe_name}.npz"
+
+        np.savez(
+            out_path,
+            vid_idx=int(vid_idx),
+            video_name=str(name),
+            start=int(s),
+            end=int(e),
+            T=int(e - s),
+
+            # segment-level
+            base_scores=base_scores,
+            tta_scores=tta_scores,
+            seg_gt=seg_gt_video,
+
+            # frame-level
+            base_frame_scores=base_frame_scores,
+            tta_frame_scores=tta_frame_scores,
+            frame_gt=frame_gt_video,
+
+            warmup_segments=int(warmup_segments),
+            frame_repeat=int(frame_repeat),
+        )
+
+        print(f"[saved] paper plot data -> {out_path}")
+
+# 데모 앱용 JSON export 
+# - manifest.json
+# - camXX_scores.json 여러 개
 def export_demo_jsons(
     seg_scores_adapted,
     nalist,
@@ -686,13 +929,8 @@ def export_demo_jsons(
     display_reference=0.10,
     selected_vid_indices=None,
     actual_video_duration_map=None,
-    seg_scores_baseline=None,   # 추가
+    seg_scores_baseline=None, 
 ):
-    """
-    데모 앱용 JSON export
-    - manifest.json
-    - camXX_scores.json 여러 개
-    """
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -803,7 +1041,6 @@ if __name__ == '__main__':
     
     model.eval()
     
-
     # baseline (tta 없음, t = 1 ~ T 모두 평가) BUT adapter는 통과함. 
     res_base = eval_xd_with_episodic_tta(
         X_flat=X_flat,
@@ -819,7 +1056,6 @@ if __name__ == '__main__':
     print("\n[BASELINE]")
     print("AUC:", res_base["auc"])
     print("AP :", res_base["ap"])
-
     
     # TTA baseline (tta 없음, t = k ~ T 만 평가)
     res_tta_base = eval_xd_with_episodic_tta(
@@ -833,34 +1069,31 @@ if __name__ == '__main__':
         use_tta=False,          
         adapt_prefix_only=False,          # 적응 안 함
         exclude_prefix_from_eval=True,    # normal prototype 제외 평가
-        warmup_segments=args.warmup_segments,
+        warmup_segments=5,
     )
-
-    print("\n[BASELINE - SUFFIX ONLY]")
+    print("\n[TTA BASELINE - SUFFIX ONLY]")
     print("AUC:", res_tta_base["auc"])
     print("AP :", res_tta_base["ap"])
-
     
     # TTA (tta 있음, t = k ~ T 만 평가)
     res_tta = eval_xd_with_episodic_tta(
-    X_flat=X_flat,
-    nalist=nalist,
-    gt=gt,
-    adapter=adapter,
-    model=model,
-    device=device,
-    frame_repeat=args.frame_repeat,
-    use_tta=True,
-    q=args.tta_q,   
-    min_keep=args.tta_min_keep,
-    tta_lr=args.tta_lr,
-    tta_steps_per_video=args.tta_steps_per_video,
-    adapt_prefix_only=True,           # normal prototype으로 update
-    exclude_prefix_from_eval=True,    # normal prototype 제외 평가
-    warmup_segments=args.warmup_segments,                
+        X_flat=X_flat,
+        nalist=nalist,
+        gt=gt,
+        adapter=adapter,
+        model=model,
+        device=device,
+        frame_repeat=args.frame_repeat,
+        use_tta=True,
+        q=args.tta_q,   
+        min_keep=args.tta_min_keep,
+        tta_lr=args.tta_lr,
+        tta_steps_per_video=args.tta_steps_per_video,
+        adapt_prefix_only=True,           # normal prototype으로 update
+        exclude_prefix_from_eval=True,    # normal prototype 제외 평가
+        warmup_segments=args.warmup_segments,                
     )
-
-    print("\n[PREFIX WARM-UP tta]")
+    print("\n[TTA]")
     print("AUC:", res_tta["auc"])
     print("AP :", res_tta["ap"])
     
@@ -870,7 +1103,21 @@ if __name__ == '__main__':
     # --------------------------------------------------
     video_names = load_video_names(args.video_list_path)
     
-    # 1) baseline csv
+    # paper plot data export
+    selected_paper_vids = [38]  # 원하는 vid_idx로 변경
+    export_paper_plot_data(
+        seg_scores_base=res_tta_base["seg_scores_all"],
+        seg_scores_tta=res_tta["seg_scores_all"],
+        nalist=nalist,
+        out_dir=Path(args.output_dir) / "paper_plot_data",
+        video_names=video_names,
+        gt=gt,
+        frame_repeat=args.frame_repeat,
+        warmup_segments=args.warmup_segments,
+        selected_vid_indices=selected_paper_vids,
+    )
+    
+    # TTA baseline csv
     base_rows = summarize_demo_candidates(
         seg_scores_all=res_tta_base["seg_scores_all"],
         nalist=nalist,
@@ -879,20 +1126,20 @@ if __name__ == '__main__':
         top_k_mean=5,
     )
 
-    # 2) baseline 전체 score plot 저장
+    # TTA baseline score plot
     save_video_score_plots(
         seg_scores_all=res_tta_base["seg_scores_all"],
         nalist=nalist,
         out_dir=Path(args.output_dir) / "tta_base_plots",
         video_names=video_names,
-        threshold=args.plot_threshold,
         gt=gt,
         frame_repeat=args.frame_repeat,
         show_gt=True,
         show_prefix=False,
+        use_frame_axis=True,
     )
 
-    # 3) TTA csv
+    # TTA csv
     tta_rows = summarize_demo_candidates(
         seg_scores_all=res_tta["seg_scores_all"],
         nalist=nalist,
@@ -900,22 +1147,23 @@ if __name__ == '__main__':
         video_names=video_names,
         top_k_mean=5,
     )
-
+    
+    # TTA score plot
     save_video_score_plots(
         seg_scores_all=res_tta["seg_scores_all"],
         nalist=nalist,
         out_dir=Path(args.output_dir) / "tta_plots",
         video_names=video_names,
-        threshold=args.tta_plot_threshold,
         gt=gt,
         frame_repeat=args.frame_repeat,
         show_gt=True,
         show_prefix=True,
         warmup_segments=args.warmup_segments,
+        use_frame_axis=True,
     )
-
+   
     '''
-    # 4) vid_idx를 넣어서 JSON export
+    # vid_idx를 넣어서 데모용 JSON export
     selected_vid_indices = [17, 30, 97, 230]
 
     export_demo_jsons(
@@ -933,7 +1181,7 @@ if __name__ == '__main__':
     )
     '''
 
-    #부트스트랩으로 확인
+    #부트스트랩으로 개선 확인 
     boot_res = bootstrap_video_ci(
         seg_scores_base=res_tta_base["seg_scores_all"],
         seg_scores_tta=res_tta["seg_scores_all"],

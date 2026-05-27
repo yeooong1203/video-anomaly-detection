@@ -32,11 +32,9 @@ if __name__ == '__main__':
     wandb.init(project="Unsupervised Anomaly Detection", config=args, mode=args.wandb_mode)
 
     from datetime import datetime
-    
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = wandb.run.id if wandb.run is not None else "local"  
 
-    # Paths
     os.makedirs(args.ckpt_dir, exist_ok=True)
     model_name = f"{args.datasetname}_{args.model_type}"
     best_path = os.path.join(args.ckpt_dir, f'{model_name}_best_{ts}_{run_id}.pkl')
@@ -65,7 +63,6 @@ if __name__ == '__main__':
         drop_last=False,
         collate_fn=collate_fn_variable_length
     )
-
     print("train_dataset len:", len(train_dataset))
     print("train_loader.dataset len:", len(train_loader.dataset))
     print("train_loader len:", len(train_loader))
@@ -73,14 +70,12 @@ if __name__ == '__main__':
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = Model_V2_AllCNN(args.feature_size, kernel_size=args.temporal_kernel)
-    
     model = model.to(device)
     
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"\n[Model Info]")
     print(f"  Type: {args.model_type}")
     print(f"  Parameters: {total_params:,}")
-    
 
     optimizer = optim.SGD(
         model.parameters(),
@@ -90,7 +85,7 @@ if __name__ == '__main__':
         nesterov=True
     )
 
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 35], gamma=0.1)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[20,35], gamma=0.1)
     
     auc, ap = test(test_loader, model, args, device)
     print(f"\nEpoch 0 - AUC: {auc:.4f}, AP: {ap:.4f}")
@@ -121,11 +116,9 @@ if __name__ == '__main__':
         test_info["test_auc"].append(auc)
         
         scheduler.step()
-
         
         print(f'\nEpoch {epoch}/{args.max_epoch}, LR: {optimizer.param_groups[0]["lr"]:.4f}, '
-              f'AUC: {auc:.4f}, AP: {ap:.4f}, Loss: {loss:.4f}\n')
-        
+              f'AUC: {auc:.4f}, AP: {ap:.4f}, Loss: {loss:.4f}\n')  
         wandb.log({'AUC': auc, 'AP': ap, 'loss': loss}, step=epoch)
     
     # Save final
