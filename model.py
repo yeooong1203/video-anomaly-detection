@@ -23,7 +23,7 @@ class Model_V2_AllCNN(nn.Module):
         self.dropout2 = nn.Dropout(0.2)
         self.gelu = nn.GELU()
         self.sigmoid = nn.Sigmoid()
-        self.alpha = nn.Parameter(torch.ones(1))
+        #self.alpha = nn.Parameter(torch.ones(1))
     
     def forward(self, inputs, return_logits=False):
         if inputs.dim() != 3:

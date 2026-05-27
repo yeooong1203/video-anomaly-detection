@@ -1069,7 +1069,7 @@ if __name__ == '__main__':
         use_tta=False,          
         adapt_prefix_only=False,          # 적응 안 함
         exclude_prefix_from_eval=True,    # normal prototype 제외 평가
-        warmup_segments=5,
+        warmup_segments=args.warmup_segments,
     )
     print("\n[TTA BASELINE - SUFFIX ONLY]")
     print("AUC:", res_tta_base["auc"])
@@ -1168,7 +1168,7 @@ if __name__ == '__main__':
 
     export_demo_jsons(
         seg_scores_adapted=res_tta["seg_scores_all"],
-        seg_scores_baseline=res_tta_base["seg_scores_all"],   # 추가
+        seg_scores_baseline=res_tta_base["seg_scores_all"],
         nalist=nalist,
         out_dir=Path(args.output_dir) / "demo_json_base",
         video_names=video_names,
@@ -1183,7 +1183,7 @@ if __name__ == '__main__':
 
     #부트스트랩으로 개선 확인 
     boot_res = bootstrap_video_ci(
-        seg_scores_base=res_tta_base["seg_scores_all"],
+        seg_scores_baswe=res_tta_base["seg_scores_all"],
         seg_scores_tta=res_tta["seg_scores_all"],
         nalist=nalist,
         gt=gt,
