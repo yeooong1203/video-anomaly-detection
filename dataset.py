@@ -13,10 +13,8 @@ class UCFTestVideoDataset(data.Dataset):
         self.con_all = np.memmap(conall_path, dtype="float32", mode="r",
                                  shape=(self.total_T, 10, 2048))
 
-
     def __len__(self):
         return len(self.nalist)
-
 
     def __getitem__(self, index):
         a, b = map(int, self.nalist[index])
@@ -105,7 +103,7 @@ def collate_fn_variable_length(batch):
     batch_size = len(batch)
     
     # padding
-    features_padded = torch.zeros(batch_size, max_length, 2048)  # (B, max_length, 2048)
+    features_padded = torch.zeros(batch_size, max_length, args.feature_size)  # (B, max_length, 2048)
     labels_padded = torch.zeros(batch_size, max_length)  # (B, max_length)
     masks = torch.zeros(batch_size, max_length)  # (B, max_length)
     
