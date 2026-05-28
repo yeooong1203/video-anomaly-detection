@@ -34,7 +34,7 @@ def test(dataloader, model, args, device, frame_repeat=args.frame_repeat):
 
     pred_seg = np.concatenate(preds).reshape(-1)
     gt_seg, gt_mode = _segment_gt_from_gt(gt, total_T=len(pred_seg), frame_repeat=frame_repeat)
-
+    
     rec_auc = roc_auc_score(gt_seg, pred_seg)
     pr_auc = average_precision_score(gt_seg, pred_seg)
 
@@ -291,7 +291,6 @@ def _tta_update_one_video(
         loss = L_margin + lambda_reg * L_reg
         E_real = L_margin
         
-        
         # 4) tta loss 
         loss = E_real
 
@@ -375,7 +374,7 @@ def eval_xd_with_episodic_tta(
 
     total_T = X_flat.shape[0]
     seg_gt, gt_mode = _segment_gt_from_gt(gt, total_T, frame_repeat=frame_repeat)
-
+    
     model.eval()
     for p in model.parameters():
         p.requires_grad_(False)
@@ -793,12 +792,10 @@ def save_video_score_plots(
 
 
 # latex용 plot 그리기 위해 필요한 데이터 저장 
-# - segment-level baseline/TTA score
-# - frame-level baseline/TTA score
-# - segment-level GT
-# - frame-level GT
-# - warm-up prefix length
-# - video name
+# segment-level baseline/TTA score & frame-level baseline/TTA score
+# segment-level GT & frame-level GT
+# warm-up prefix length
+# video name
 def export_paper_plot_data(
     seg_scores_base,
     seg_scores_tta,
@@ -809,7 +806,8 @@ def export_paper_plot_data(
     frame_repeat=args.frame_repeat,
     warmup_segments=args.warmup_segments,
     selected_vid_indices=None,
-):
+    exclude_prefix_from_eval=False,
+    ):
     
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -841,7 +839,6 @@ def export_paper_plot_data(
                 f"len(gt)={len(gt_raw)}, total_T={total_T}, "
                 f"expected {total_T} or {total_T * frame_repeat}"
             )
-
         print(f"[export paper plot data] GT mode: {gt_mode}")
 
     # Export selected videos
@@ -905,14 +902,14 @@ def export_paper_plot_data(
             seg_gt=seg_gt_video,
 
             # frame-level
-            base_frame_scores=base_frame_scores,
-            tta_frame_scores=tta_frame_scores,
+            base_frame_scores_repeated_for_viz=base_frame_scores,
+            tta_frame_scores_repeated_for_viz=tta_frame_scores,
             frame_gt=frame_gt_video,
 
             warmup_segments=int(warmup_segments),
             frame_repeat=int(frame_repeat),
+            exclude_prefix_from_eval=bool(exclude_prefix_from_eval),
         )
-
         print(f"[saved] paper plot data -> {out_path}")
 
 # 데모 앱용 JSON export 
@@ -1010,17 +1007,16 @@ def export_demo_jsons(
     print(f"[saved] demo jsons -> {out_dir}")
 
 
-
 # ---------------------------------------------------------------------------------
 # Main test loop
 # ---------------------------------------------------------------------------------
-
 if __name__ == '__main__':
     args = option.parser.parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 1. GT / dataset
     gt = np.load(args.gt)
+    print(f"[main] loaded gt from {args.gt}, len={len(np.asarray(gt).reshape(-1))}")
     ucf_test_dataset = UCFTestVideoDataset(
         conall_path=args.test_conall_path,
         nalist_path=args.test_nalist_path,
@@ -1052,6 +1048,7 @@ if __name__ == '__main__':
         frame_repeat=args.frame_repeat,
         use_tta=False,
         verbose_every=100,
+        exclude_prefix_from_eval=False,
     )
     print("\n[BASELINE]")
     print("AUC:", res_base["auc"])
@@ -1067,7 +1064,7 @@ if __name__ == '__main__':
         device=device,
         frame_repeat=args.frame_repeat,
         use_tta=False,          
-        adapt_prefix_only=False,          # 적응 안 함
+        adapt_prefix_only=False,          # normal prototype으로 적응 안 함
         exclude_prefix_from_eval=True,    # normal prototype 제외 평가
         warmup_segments=args.warmup_segments,
     )
@@ -1089,7 +1086,7 @@ if __name__ == '__main__':
         min_keep=args.tta_min_keep,
         tta_lr=args.tta_lr,
         tta_steps_per_video=args.tta_steps_per_video,
-        adapt_prefix_only=True,           # normal prototype으로 update
+        adapt_prefix_only=True,           # normal prototype으로 적응 함
         exclude_prefix_from_eval=True,    # normal prototype 제외 평가
         warmup_segments=args.warmup_segments,                
     )
@@ -1104,7 +1101,7 @@ if __name__ == '__main__':
     video_names = load_video_names(args.video_list_path)
     
     # paper plot data export
-    selected_paper_vids = [38]  # 원하는 vid_idx로 변경
+    selected_paper_vids = [17,38]  # 원하는 vid_idx로 변경
     export_paper_plot_data(
         seg_scores_base=res_tta_base["seg_scores_all"],
         seg_scores_tta=res_tta["seg_scores_all"],

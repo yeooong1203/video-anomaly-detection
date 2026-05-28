@@ -116,8 +116,6 @@ def generate_improved_pseudo_labels(train_data, nalist,
                                     use_prototype_swap=True,
                                     swap_threshold=0.8):
 
-    total_T = int(nalist[-1, 1])
-    
     # Feature Normalization
     all_features = []
     
@@ -232,7 +230,8 @@ def main():
     
     nalist = np.load(train_nalist_path)
     total_T = int(nalist[-1, 1])
-    
+    assert int(nalist[-1, 1]) == total_T, "nalist end index must equal total_T"
+
     train_data = np.memmap(
         train_data_path,
         dtype="float32",
