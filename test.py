@@ -270,9 +270,8 @@ def _tta_update_one_video(
         tau = 0.3    
         with torch.no_grad():
             w = torch.softmax(-prob_sel / tau, dim=0)  # (N,)  lower prob_sel = higher weight
-        #E_real = (w * F.softplus(logit_real)).sum()       
+        E_real = (w * F.softplus(logit_real)).sum()       
         #E_real = F.softplus(logit_real).mean()
-        
         
         # --------------------------------------------------
         # Prefix-only conservative TTA loss
@@ -287,9 +286,9 @@ def _tta_update_one_video(
             F.mse_loss(adapter_episode.ln.weight, ln_weight_init)
             + F.mse_loss(adapter_episode.ln.bias, ln_bias_init)
         )
-        lambda_reg = 0.05
-        loss = L_margin + lambda_reg * L_reg
-        E_real = L_margin
+        #lambda_reg = 0.05
+        #loss = L_margin + lambda_reg * L_reg
+        #E_real = L_margin
         
         # 4) tta loss 
         loss = E_real
@@ -297,32 +296,6 @@ def _tta_update_one_video(
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
-
-        # --------------------------------------------------
-        # Trust-region clamp for LayerNorm parameters
-        # No suffix information is used.
-        # --------------------------------------------------
-        max_delta_gamma = 0.05
-        max_delta_beta = 0.05
-
-        with torch.no_grad():
-            adapter_episode.ln.weight.copy_(
-                ln_weight_init
-                + torch.clamp(
-                    adapter_episode.ln.weight - ln_weight_init,
-                    -max_delta_gamma,
-                    max_delta_gamma,
-                )
-            )
-            adapter_episode.ln.bias.copy_(
-                ln_bias_init
-                + torch.clamp(
-                    adapter_episode.ln.bias - ln_bias_init,
-                    -max_delta_beta,
-                    max_delta_beta,
-                )
-            )
-
 
         debug.append({
             "step": step_idx,
@@ -612,7 +585,6 @@ def summarize_demo_candidates(seg_scores_all, nalist, out_csv_path, video_names=
 
     print(f"[saved] candidate summary csv -> {out_csv_path}")
     return rows
-
 
 # 비디오별 score timeline plot 저장
 def save_video_score_plots(
@@ -1178,6 +1150,7 @@ if __name__ == '__main__':
     )
     '''
 
+    '''
     #부트스트랩으로 개선 확인 
     boot_res = bootstrap_video_ci(
         seg_scores_baswe=res_tta_base["seg_scores_all"],
@@ -1188,3 +1161,4 @@ if __name__ == '__main__':
         n_boot=1000,
         seed=42,
     )
+    '''

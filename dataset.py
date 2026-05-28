@@ -11,7 +11,9 @@ class UCFTestVideoDataset(data.Dataset):
         self.nalist = np.load(nalist_path)                 # (N,2)
         self.total_T = int(self.nalist[-1, 1])
         self.con_all = np.memmap(conall_path, dtype="float32", mode="r",
-                                 shape=(self.total_T, 10, 2048))
+                                 shape=(self.total_T, 10, args.feature_size))
+        assert int(self.nalist[-1, 1]) == self.total_T, "nalist end index must equal total_T"
+
 
     def __len__(self):
         return len(self.nalist)
@@ -19,7 +21,8 @@ class UCFTestVideoDataset(data.Dataset):
     def __getitem__(self, index):
         a, b = map(int, self.nalist[index])
         x = np.array(self.con_all[a:b], dtype=np.float32)  # (T,10,2048)
-        x = x.mean(axis=1) 
+        if x.ndim == 3:
+            x = x.mean(axis=1)
         return torch.from_numpy(x)                         # CPU float32
 
 
@@ -30,23 +33,18 @@ class UCFTrainVideoDataset_Stratified(data.Dataset):
         
         self.nalist = np.load(nalist_path)
         self.num_videos = len(self.nalist)
-        
         self.pseudo_labels = np.load(pseudo_path).astype(np.float32)
         self.total_T = len(self.pseudo_labels)
-
-        
+        assert int(self.nalist[-1, 1]) == self.total_T, (
+            f"nalist total_T mismatch: nalist_end={int(self.nalist[-1, 1])}, pseudo_T={self.total_T}"
+        )
         self.con_all = np.memmap(
             conall_path,
             dtype="float32",
             mode="r",
-            shape=(self.total_T, 10, 2048)
+            shape=(self.total_T, 10, args.feature_size)
         )
-        
         print("loaded feature:", conall_path, self.con_all.shape)
-
-        assert self.con_all.shape[0] == self.total_T, (
-            f"feature T mismatch: feature={self.con_all.shape[0]}, nalist={self.total_T}"
-        )
 
         self.window_size = window_size
         self.stride = stride
@@ -82,7 +80,8 @@ class UCFTrainVideoDataset_Stratified(data.Dataset):
         vid_idx, global_start, global_end = self.windows[idx]   
         
         window_features = self.con_all[global_start:global_end].copy() # window 구간의 feature(T, 10, 2048)를 가져와서
-        window_features = window_features.mean(axis=1)  # 10-crop 평균 -> (T, 2048)로 만듦.
+        if window_features.ndim == 3:
+            window_features = window_features.mean(axis=1) # 10-crop 평균 -> (T, 2048)로 만듦.
         
         window_labels = self.pseudo_labels[global_start:global_end]  # 해당 구간의 pseudo label도 가져온다. (T,) 
         
