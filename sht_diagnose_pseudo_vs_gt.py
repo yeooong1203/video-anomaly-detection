@@ -6,13 +6,13 @@ import numpy as np
 
 
 # ====== 경로만 네 환경에 맞게 확인 ======
-pseudo_path = Path("../Unsup_labels/SHT_pseudo_labels_fixedload.npy")
+pseudo_path = Path("Unsup_labels/SHT_pseudo_labels_fixedload.npy")
 
-train_nalist_path = Path("../../data/shanghaitech/processed/ShanghaiTech_GCN_train_nalist.npy")
-train_names_path = Path("../../data/shanghaitech/processed/ShanghaiTech_GCN_train_video_names.npy")
+train_nalist_path = Path("../data/shanghaitech/processed/ShanghaiTech_GCN_train_nalist.npy")
+train_names_path = Path("../data/shanghaitech/processed/ShanghaiTech_GCN_train_video_names.npy")
 
 # abnormal interval annotation txt
-ann_path = Path("../../data/shanghaitech/annotations/shanghaitech_nalist.txt")
+ann_path = Path("../data/shanghaitech/annotations/shanghaitech_nalist.txt")
 
 out_csv = Path("diagnostic_pseudo_vs_train_gt.csv")
 

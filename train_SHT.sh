@@ -5,12 +5,12 @@ python mainv2.py \
     --train-batch-size 8\
     --window-size 16 \
     --stride 16 \
-    --temporal_kernel 3 \
+    --temporal_kernel 5 \
     --pseudofile Unsup_labels/SHT_pseudo_labels_fixedload.npy \
     --train-conall-path ../data/shanghaitech/processed/ShanghaiTech_GCN_train_features.npy \
     --train-nalist-path ../data/shanghaitech/processed/ShanghaiTech_GCN_train_nalist.npy \
     --test-conall-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_features.npy \
     --test-nalist-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_nalist.npy \
     --gt ../data/shanghaitech/processed/ShanghaiTech_GCN_test_gt_segment.npy\
-    --max-epoch 30 \
+    --max-epoch 50 \
     --lr 0.001

@@ -80,12 +80,12 @@ if __name__ == '__main__':
     optimizer = optim.SGD(
         model.parameters(),
         lr=args.lr,                  
-        weight_decay=5e-4,
+        weight_decay=1e-4,
         momentum=0.9,
         nesterov=True
     )
 
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[20,35], gamma=0.1)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[25,35], gamma=0.1)
     
     auc, ap = test(test_loader, model, args, device)
     print(f"\nEpoch 0 - AUC: {auc:.4f}, AP: {ap:.4f}")

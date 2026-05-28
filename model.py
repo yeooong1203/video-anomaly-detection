@@ -12,10 +12,10 @@ class Model_V2_AllCNN(nn.Module):
 
         self.conv_att1 = nn.Conv1d(n_features, 256, kernel_size=3, padding=3//2)
         
-        self.conv2 = nn.Conv1d(256, 64, kernel_size, padding=kernel_size//2)
+        self.conv2 = nn.Conv1d(256, 64, kernel_size=5, padding=5//2)
         self.bn2 = nn.BatchNorm1d(64)
         
-        self.conv_att2 = nn.Conv1d(256, 64, kernel_size, padding=kernel_size//2)
+        self.conv_att2 = nn.Conv1d(256, 64, kernel_size=5, padding=5//2)
         
         self.fc_out = nn.Linear(64, 1)
         

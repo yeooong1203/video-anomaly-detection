@@ -6,7 +6,7 @@ import option
 def find_optimal_threshold(scores):
     valid_scores = scores
     
-    return np.percentile(valid_scores, 80)
+    return np.percentile(valid_scores, 90)
 
 
 def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
@@ -19,8 +19,8 @@ def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
         for i in range(len(scores)):
             
             # Window (i-10 ~ i+10)
-            window_start = max(0, i - 5)
-            window_end = min(len(scores), i + 6)
+            window_start = max(0, i - 10)
+            window_end = min(len(scores), i + 11)
             window = scores[window_start:window_end]
             
             # 주변에 더 높은 score 있으면 끌어올림
@@ -107,8 +107,8 @@ def generate_improved_pseudo_labels(train_data, nalist,
                                     score_normalization='zscore',
                                     prototype_method='none',
                                     use_attraction=True,
-                                    attraction_strength=0.2,
-                                    attraction_iterations=2,
+                                    attraction_strength=0.4,
+                                    attraction_iterations=3,
                                     remove_isolated_abn=True,
                                     isolated_abn_min_length=1,
                                     fill_isolated_norm=True,
@@ -221,6 +221,7 @@ def generate_improved_pseudo_labels(train_data, nalist,
                 swap_count += 1
                 swap_ratios.append(abn_ratio)
         
+    
     return all_binary_labels
 
 
@@ -249,8 +250,8 @@ def main():
         score_normalization='zscore',
         prototype_method='none',
         use_attraction=True,
-        attraction_strength=0.2,
-        attraction_iterations=2,
+        attraction_strength=0.4,
+        attraction_iterations=3,
         remove_isolated_abn=True,  
         isolated_abn_min_length=2,  # N-A-N 제거
         fill_isolated_norm=True,  
