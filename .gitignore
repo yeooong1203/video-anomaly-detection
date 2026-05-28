@@ -8,5 +8,3 @@ __pycache__/
 # logs & ouput folders
 wandb/
 demo_exports/
-
-pseudo_SHT.py
