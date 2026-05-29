@@ -9,8 +9,8 @@ python mainv2.py \
     --pseudofile Unsup_labels/pseudo_labels_swap_90.npy \
     --train-conall-path ../C2FPL/concat_UCF.npy \
     --train-nalist-path list/nalist_i3d.npy \
-    --test-conall-path ../C2FPL/Concat_test_10.npy \
+    --test-conall-path Concat_test_10.npy \
     --test-nalist-path list/nalist_test_i3d.npy \
-    --gt list/gt-ucf-RTFM.npy \
+    --gt list/gt-ucf-R.npy \
     --max-epoch 30 \
     --lr 0.001

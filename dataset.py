@@ -28,12 +28,13 @@ class UCFTestVideoDataset(data.Dataset):
 
 class UCFTrainVideoDataset_Stratified(data.Dataset):
     
-    def __init__(self, conall_path, pseudo_path, nalist_path,
+    def __init__(self, conall_path, pseudo_path, nalist_path, confidence_path,
                  window_size=2000, stride=2000):
         
         self.nalist = np.load(nalist_path)
         self.num_videos = len(self.nalist)
         self.pseudo_labels = np.load(pseudo_path).astype(np.float32)
+        self.confidences = np.load(confidence_path).astype(np.float32)
         self.total_T = len(self.pseudo_labels)
         assert int(self.nalist[-1, 1]) == self.total_T, (
             f"nalist total_T mismatch: nalist_end={int(self.nalist[-1, 1])}, pseudo_T={self.total_T}"
@@ -85,18 +86,21 @@ class UCFTrainVideoDataset_Stratified(data.Dataset):
         
         window_labels = self.pseudo_labels[global_start:global_end]  # 해당 구간의 pseudo label도 가져온다. (T,) 
         
+        window_confidences = self.confidences[global_start:global_end]
+
         features = torch.from_numpy(window_features.astype(np.float32))
-        labels = torch.from_numpy(window_labels)        
+        labels = torch.from_numpy(window_labels)   
+        confidences = torch.from_numpy(window_confidences)     
 
         window_length = len(features)
         
-        return features, labels, window_length
+        return features, labels, confidences, window_length
 
 
 # batch 안의 가장 긴 segment에 맞추어 padding 
 def collate_fn_variable_length(batch):
 
-    features_list, labels_list, lengths = zip(*batch)
+    features_list, labels_list, confidences_list, lengths = zip(*batch)
     
     max_length = max(lengths)
     batch_size = len(batch)
@@ -104,13 +108,15 @@ def collate_fn_variable_length(batch):
     # padding
     features_padded = torch.zeros(batch_size, max_length, args.feature_size)  # (B, max_length, 2048)
     labels_padded = torch.zeros(batch_size, max_length)  # (B, max_length)
+    confidences_padded = torch.zeros(batch_size, max_length) 
     masks = torch.zeros(batch_size, max_length)  # (B, max_length)
     
-    for i, (feat, label, length) in enumerate(zip(features_list, labels_list, lengths)):
+    for i, (feat, label, confidence, length) in enumerate(zip(features_list, labels_list, confidences_list, lengths)):
         features_padded[i, :length] = feat
         labels_padded[i, :length] = label
+        confidences_padded[i, :length] = confidence
         masks[i, :length] = 1 
     
     lengths = torch.tensor(lengths, dtype=torch.long)  # (B,)
     
-    return features_padded, labels_padded, masks, lengths
+    return features_padded, labels_padded, confidences_padded, masks, lengths

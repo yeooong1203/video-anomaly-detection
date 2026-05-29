@@ -3,10 +3,11 @@ __pycache__/
 *.pyc
 
 # dataset
-*.npy
+Concat_test_10.npy
+concat_XD_test_R50NL.npy
+SHT_concat_test.npy
+SHT_concat_train.npy
 
 # logs & ouput folders
 wandb/
 demo_exports/
-
-pseudo_SHT.py

@@ -6,7 +6,7 @@ import option
 def find_optimal_threshold(scores):
     valid_scores = scores
     
-    return np.percentile(valid_scores, 90)
+    return np.percentile(valid_scores, 80)
 
 
 def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
@@ -90,7 +90,7 @@ def fill_isolated_normal(binary_labels, max_gap=1):
     return filled
 
 
-def check_prototype_swap(video_binary_labels, abnormal_ratio_threshold=0.9):
+def check_prototype_swap(video_binary_labels, abnormal_ratio_threshold=0.8):
 
     abnormal_ratio = video_binary_labels.mean()
     should_swap = abnormal_ratio >= abnormal_ratio_threshold
@@ -108,15 +108,15 @@ def generate_improved_pseudo_labels(train_data, nalist,
                                     score_normalization='zscore',
                                     prototype_method='none',
                                     use_attraction=True,
-                                    attraction_strength=0.4,
-                                    attraction_iterations=3,
+                                    attraction_strength=0.2,
+                                    attraction_iterations=2,
                                     remove_isolated_abn=True,
                                     isolated_abn_min_length=1,
                                     fill_isolated_norm=True,
                                     isolated_norm_max_gap=2,
                                     use_prototype_swap=True,
                                     swap_threshold=0.8):
-
+    
     # Feature Normalization
     all_features = []
     
@@ -138,19 +138,27 @@ def generate_improved_pseudo_labels(train_data, nalist,
     
     # Compute Distance Scores
     all_scores = []
+    
     for video_feat in tqdm(all_features, desc="Scoring"):
-
 
         if len(video_feat) < 8:
             all_scores.append(np.zeros(len(video_feat)))
             continue
         
         # Prototype
-        prototype = video_feat[:5].mean(axis=0)
+        #prototype = video_feat[:5].mean(axis=0)
         proto_indices = range(5)
         
         # Distance
-        distances = np.linalg.norm(video_feat - prototype, axis=1)
+        #distances = np.linalg.norm(video_feat - prototype, axis=1)
+
+        proto_feats = video_feat[:5]              # (5, 2048)
+        dists_to_protos = np.linalg.norm(
+            video_feat[:, np.newaxis, :] - proto_feats[np.newaxis, :, :],
+            axis=2
+        )                                          # (T, 5)
+        distances = dists_to_protos.min(axis=1)   # (T,) 가장 가까운 prototype까지
+        
         distances[proto_indices] = 0
         
         all_scores.append(distances)
@@ -189,6 +197,20 @@ def generate_improved_pseudo_labels(train_data, nalist,
     # Threshold
     all_scores_flat = np.concatenate(all_scores)
 
+    print(f"\n{'='*60}")
+    print(f"Score Statistics:")
+    print(f"  Count: {len(all_scores_flat):,}")
+    print(f"  Mean: {all_scores_flat.mean():.4f}")
+    print(f"  Std: {all_scores_flat.std():.4f}")
+    print(f"  Min: {all_scores_flat.min():.4f}")
+    print(f"  Max: {all_scores_flat.max():.4f}")
+    print(f"\nPercentiles:")
+    for p in [50, 75, 80, 90, 95, 98, 99]:
+        val = np.percentile(all_scores_flat, p)
+        print(f"  {p:2d}th: {val:.4f}")
+    
+    print(f"{'='*60}")
+
     threshold = find_optimal_threshold(all_scores_flat)
     
     all_binary_labels = []
@@ -196,7 +218,6 @@ def generate_improved_pseudo_labels(train_data, nalist,
     for video_scores in all_scores:
         binary = (video_scores >= threshold).astype(int)
         all_binary_labels.append(binary)
-    
     
     if remove_isolated_abn:
         for i, binary in enumerate(tqdm(all_binary_labels, desc="Remove isolated abn")):
@@ -208,6 +229,7 @@ def generate_improved_pseudo_labels(train_data, nalist,
     
     swap_count = 0
     swap_ratios = []
+    
     if use_prototype_swap:
         for i, binary in enumerate(tqdm(all_binary_labels, desc="Prototype swap")):
             should_swap, abn_ratio = check_prototype_swap(binary, abnormal_ratio_threshold=swap_threshold)
@@ -217,23 +239,21 @@ def generate_improved_pseudo_labels(train_data, nalist,
                 swap_count += 1
                 swap_ratios.append(abn_ratio)
         print("swap count:", swap_count)
+        
     return all_binary_labels
 
 
 def main():
     args = option.parser.parse_args()
-    train_nalist_path = args.train_nalist_path
-    train_conall_path = args.train_conall_path
     
-    nalist = np.load(train_nalist_path)
+    nalist = np.load(args.train_nalist_path)
     total_T = int(nalist[-1, 1])
-    assert int(nalist[-1, 1]) == total_T, "nalist end index must equal total_T"
-
+    
     train_data = np.memmap(
-        train_conall_path,
+        args.train_conall_path,
         dtype="float32",
         mode="r",
-        shape=(total_T, 10, args.feature_size)
+        shape=(total_T, 10, 2048)
     )
     
     print(f"  Segments: {total_T:,}")
@@ -246,14 +266,14 @@ def main():
         score_normalization='zscore',
         prototype_method='none',
         use_attraction=True,
-        attraction_strength=0.4,
-        attraction_iterations=3,
+        attraction_strength=1.0,
+        attraction_iterations=5,
         remove_isolated_abn=True,  
-        isolated_abn_min_length=2,  # N-A-N 제거
+        isolated_abn_min_length=4,  # N-A-N 제거
         fill_isolated_norm=True,  
         isolated_norm_max_gap=2,  # A-N-A 제거
         use_prototype_swap=True,  
-        swap_threshold=0.7  # 70% 이상이면 swap
+        swap_threshold=0.8 # 80% 이상이면 swap
     )
     
     all_labels_flat = np.concatenate(pseudo_labels_list)

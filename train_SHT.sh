@@ -6,11 +6,12 @@ python mainv2.py \
     --window-size 16 \
     --stride 16 \
     --temporal_kernel 5 \
-    --pseudofile Unsup_labels/SHT_pseudo_labels_fixedload_noTA.npy \
-    --train-conall-path ../data/shanghaitech/processed/ShanghaiTech_GCN_train_features.npy \
-    --train-nalist-path ../data/shanghaitech/processed/ShanghaiTech_GCN_train_nalist.npy \
-    --test-conall-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_features.npy \
-    --test-nalist-path ../data/shanghaitech/processed/ShanghaiTech_GCN_test_nalist.npy \
-    --gt ../data/shanghaitech/processed/ShanghaiTech_GCN_test_gt_segment.npy\
+    --pseudofile Unsup_labels/SHT_pseudo_labels.npy \
+    --train-conall-path SHT_concat_train.npy \
+    --train-nalist-path list/SHT_nalist_train.npy \
+    --test-conall-path SHT_concat_test.npy \
+    --test-nalist-path list/SHT_nalist_test.npy \
+    --gt list/gt-SHT-segment.npy\
+    --confidence-path list/SHT_confidence_scores.npy\
     --max-epoch 50 \
     --lr 0.001

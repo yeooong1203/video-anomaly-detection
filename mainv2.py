@@ -52,6 +52,7 @@ if __name__ == '__main__':
     nalist_path=args.train_nalist_path,
     window_size=args.window_size,
     stride=args.stride,
+    confidence_path=args.confidence_path
     )
 
     train_loader = DataLoader(
@@ -84,8 +85,10 @@ if __name__ == '__main__':
         momentum=0.9,
         nesterov=True
     )
-
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[25,35], gamma=0.1)
+    #UCF
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[20,35], gamma=0.1)
+    #SHT
+    #scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[35,40], gamma=0.1)
     
     auc, ap = test(test_loader, model, args, device)
     print(f"\nEpoch 0 - AUC: {auc:.4f}, AP: {ap:.4f}")

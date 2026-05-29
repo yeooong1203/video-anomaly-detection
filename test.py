@@ -4,7 +4,6 @@ from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, av
 import numpy as np
 from dataset import UCFTestVideoDataset
 import option
-from tqdm import tqdm
 import csv
 import copy
 from model import Model_V2_AllCNN
