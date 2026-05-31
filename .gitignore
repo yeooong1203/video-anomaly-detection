@@ -11,3 +11,4 @@ SHT_concat_train.npy
 # logs & ouput folders
 wandb/
 demo_exports/
+unsupervised_ckpt/

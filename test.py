@@ -1072,7 +1072,7 @@ if __name__ == '__main__':
     video_names = load_video_names(args.video_list_path)
     
     # paper plot data export
-    selected_paper_vids = [17,38]  # 원하는 vid_idx로 변경
+    selected_paper_vids = [30]  # 원하는 vid_idx로 변경
     export_paper_plot_data(
         seg_scores_base=res_tta_base["seg_scores_all"],
         seg_scores_tta=res_tta["seg_scores_all"],

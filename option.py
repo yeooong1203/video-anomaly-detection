@@ -24,7 +24,7 @@ parser.add_argument('--train-conall-path', type=str, default='../C2FPL/concat_UC
 parser.add_argument('--train-nalist-path', type=str, default='list/nalist_i3d.npy', help='Path to train video start/end index list')
 parser.add_argument('--test-conall-path', type=str, default='Concat_test_10.npy', help='Path to concatenated test feature memmap')
 parser.add_argument('--test-nalist-path', type=str, default='list/nalist_test_i3d.npy', help='Path to test video start/end index list')
-parser.add_argument('--confidence-path', type=str, default='Unsup_labels/UCF_confidence_scores.npy')
+parser.add_argument('--confidence-path', type=str, default='list/UCF_confidence_scores.npy')
 parser.add_argument('--ckpt-dir', type=str, default='unsupervised_ckpt', help='Directory to save training checkpoints')
 parser.add_argument('--ckpt-path', type=str, default='unsupervised_ckpt/UCF_all_cnn_best_20260514_030319_0k0lg0eg.pkl', help='Path to model checkpoint for test/TTA')
 parser.add_argument('--video-list-path', type=str, default='list/ucf-i3d_test_fixed_local.list', help='Path to model checkpoint for test/TTA')

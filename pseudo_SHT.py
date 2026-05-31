@@ -1,3 +1,4 @@
+#pseduo_SHT.py
 import numpy as np
 from tqdm import tqdm
 import option
@@ -19,8 +20,8 @@ def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
         for i in range(len(scores)):
             
             # Window (i-10 ~ i+10)
-            window_start = max(0, i - 10)
-            window_end = min(len(scores), i + 11)
+            window_start = max(0, i - 5)
+            window_end = min(len(scores), i + 6)
             window = scores[window_start:window_end]
             
             # 주변에 더 높은 score 있으면 끌어올림
@@ -28,7 +29,7 @@ def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
                 max_idx = window.argmax() + window_start
                 distance = abs(max_idx - i)
                 
-                force = attraction_strength * window.max() * np.exp(-distance / 2.0)
+                force = attraction_strength * window.max() #* np.exp(-distance / 2.0)
                 attracted[i] += force
         
         max_val = attracted.max()
@@ -146,19 +147,11 @@ def generate_improved_pseudo_labels(train_data, nalist,
             continue
         
         # Prototype
-        #prototype = video_feat[:5].mean(axis=0)
+        prototype = video_feat[:5].mean(axis=0)
         proto_indices = range(5)
         
         # Distance
-        #distances = np.linalg.norm(video_feat - prototype, axis=1)
-
-        proto_feats = video_feat[:5]              # (5, 2048)
-        dists_to_protos = np.linalg.norm(
-            video_feat[:, np.newaxis, :] - proto_feats[np.newaxis, :, :],
-            axis=2
-        )                                          # (T, 5)
-        distances = dists_to_protos.min(axis=1)   # (T,) 가장 가까운 prototype까지
-        
+        distances = np.linalg.norm(video_feat - prototype, axis=1)        
         distances[proto_indices] = 0
         
         all_scores.append(distances)
@@ -266,12 +259,12 @@ def main():
         score_normalization='zscore',
         prototype_method='none',
         use_attraction=True,
-        attraction_strength=1.0,
+        attraction_strength=0.4,
         attraction_iterations=5,
         remove_isolated_abn=True,  
-        isolated_abn_min_length=4,  # N-A-N 제거
+        isolated_abn_min_length=3,  # N-A-N 제거
         fill_isolated_norm=True,  
-        isolated_norm_max_gap=2,  # A-N-A 제거
+        isolated_norm_max_gap=1,  # A-N-A 제거
         use_prototype_swap=True,  
         swap_threshold=0.8 # 80% 이상이면 swap
     )

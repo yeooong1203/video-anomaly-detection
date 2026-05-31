@@ -4,8 +4,8 @@
 1. pseudo label 생성
     - `python pseudo.py --pseudo-output Unsup_labels/UCF_pseudo_labels.npy`
 
-2. 초기 pseudo label 기반 confidence score 뽑기
-    - `python conf_main.py`
+2. 초기 pseudo label 기반 confidence score 뽑기 (만든 pseudo 파일명에 따라 뒤에 pseudofile 인자로 다른거 주어야 제대로 적용됨!)
+    - `python conf_main.py --psuedofile Unsup_labels/UCF_pseudo_labels.npy --confidence-path list/UCF_confidence_scores.npy`
 
 3. confidence score 이용한 label refinement
 4. 최종 psuedo label을 가지고 모델 학습 + 평가

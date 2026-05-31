@@ -19,8 +19,8 @@ def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
         for i in range(len(scores)):
             
             # Window (i-10 ~ i+10)
-            window_start = max(0, i - 10)
-            window_end = min(len(scores), i + 11)
+            window_start = max(0, i - 5)
+            window_end = min(len(scores), i + 6)
             window = scores[window_start:window_end]
             
             # 주변에 더 높은 score 있으면 끌어올림
@@ -28,7 +28,7 @@ def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
                 max_idx = window.argmax() + window_start
                 distance = abs(max_idx - i)
                 
-                force = attraction_strength * window.max() * np.exp(-distance / 2.0)
+                force = attraction_strength * window.max() #* np.exp(-distance / 2.0)
                 attracted[i] += force
         
         max_val = attracted.max()
@@ -197,7 +197,6 @@ def generate_improved_pseudo_labels(train_data, nalist,
         binary = (video_scores >= threshold).astype(int)
         all_binary_labels.append(binary)
     
-    
     if remove_isolated_abn:
         for i, binary in enumerate(tqdm(all_binary_labels, desc="Remove isolated abn")):
             all_binary_labels[i] = remove_isolated_abnormal(binary, min_length=isolated_abn_min_length)
@@ -247,11 +246,11 @@ def main():
         prototype_method='none',
         use_attraction=True,
         attraction_strength=0.4,
-        attraction_iterations=3,
+        attraction_iterations=5,
         remove_isolated_abn=True,  
-        isolated_abn_min_length=2,  # N-A-N 제거
+        isolated_abn_min_length=1,  # N-A-N 제거
         fill_isolated_norm=True,  
-        isolated_norm_max_gap=2,  # A-N-A 제거
+        isolated_norm_max_gap=1,  # A-N-A 제거
         use_prototype_swap=True,  
         swap_threshold=0.7  # 70% 이상이면 swap
     )

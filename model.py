@@ -6,7 +6,19 @@ class Model_V2_AllCNN(nn.Module):
     
     def __init__(self, n_features, kernel_size=5):
         super().__init__()
+        '''
+        self.conv1 = nn.Conv1d(n_features, 128, kernel_size=3, padding=3//2)
+        self.bn1 = nn.BatchNorm1d(128)
+
+        self.conv_att1 = nn.Conv1d(n_features, 128, kernel_size=3, padding=3//2)
         
+        self.conv2 = nn.Conv1d(128, 32, kernel_size=5, padding=5//2)
+        self.bn2 = nn.BatchNorm1d(32)
+        
+        self.conv_att2 = nn.Conv1d(128, 32, kernel_size=5, padding=5//2)
+        
+        self.fc_out = nn.Linear(32, 1)
+        '''
         self.conv1 = nn.Conv1d(n_features, 256, kernel_size=3, padding=3//2)
         self.bn1 = nn.BatchNorm1d(256)
 
@@ -23,7 +35,9 @@ class Model_V2_AllCNN(nn.Module):
         self.dropout2 = nn.Dropout(0.2)
         self.gelu = nn.GELU()
         self.sigmoid = nn.Sigmoid()
-        #self.alpha = nn.Parameter(torch.ones(1))
+
+        # auc 82 나왔던 모델 돌리려면 필요! alpha ..
+        self.alpha = nn.Parameter(torch.ones(1))
     
     def forward(self, inputs, return_logits=False):
         if inputs.dim() != 3:
@@ -50,25 +64,27 @@ class Model_V2_AllCNN(nn.Module):
         
         logits = self.fc_out(x) 
         probs = self.sigmoid(logits)
-
+       
         probs = probs.permute(0, 2, 1) # (B, 1, T)
         probs = F.avg_pool1d(
             probs,
-            kernel_size=7,
+            kernel_size=9,
             stride=1,
-            padding=3
+            padding=4
         )
         probs = probs.permute(0, 2, 1)   # (B, T, 1)
-        
+       
         if return_logits:
+            
             logits_pooled = logits.permute(0, 2, 1)
             logits_pooled = F.avg_pool1d(
                 logits_pooled,
-                kernel_size=7,
+                kernel_size=9,
                 stride=1,
-                padding=3
+                padding=4
             )
             logits_pooled = logits_pooled.permute(0, 2, 1)
+            
             return probs, logits_pooled
         
         return probs

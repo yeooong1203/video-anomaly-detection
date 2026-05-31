@@ -70,7 +70,7 @@ class BidirectionalTemporalConsistency:
         
         # 1. Feature similarity (0~1)
         #    가까우면 1, 멀면 0
-        feat_similarity = np.exp(-feat_dist / 15.0)
+        feat_similarity = np.exp(-feat_dist / 10.0)
         
         # 2. Label consistency (0 or 1)
         #    같으면 1, 다르면 0

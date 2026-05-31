@@ -6,7 +6,7 @@ python mainv2.py \
     --window-size 500 \
     --stride 500 \
     --temporal_kernel 5 \
-    --pseudofile Unsup_labels/pseudo_labels_swap_90.npy \
+    --pseudofile Unsup_labels/UCF_pseudo_labels.npy \
     --train-conall-path ../C2FPL/concat_UCF.npy \
     --train-nalist-path list/nalist_i3d.npy \
     --test-conall-path Concat_test_10.npy \

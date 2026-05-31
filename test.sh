@@ -1,6 +1,6 @@
 python test.py \
   --datasetname UCF \
-  --ckpt-path unsupervised_ckpt/ShanghaiTech_all_cnn_final_20260529_141310_ab7m7pz5.pkl \
+  --ckpt-path unsupervised_ckpt/UCF_all_cnn_final_20260514_030319_0k0lg0eg.pkl \
   --test-conall-path Concat_test_10.npy \
   --test-nalist-path list/nalist_test_i3d.npy \
   --gt list/gt-ucf-R.npy \
@@ -8,7 +8,7 @@ python test.py \
   --feature-size 2048 \
   --frame-repeat 16 \
   --test-batch-size 1\
-  --warmup-segments 20 \
+  --warmup-segments 5 \
   --tta-q 1.0 \
   --tta-min-keep 3 \
   --tta-lr 1e-2 \
