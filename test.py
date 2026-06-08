@@ -778,6 +778,9 @@ def save_video_score_plots(
     unit = "frame" if use_frame_axis else "segment"
     print(f"[saved] {unit}-level score plots -> {out_dir}")
 
+
+
+
 def save_roc_curve_for_paper(res_base, res_tta, out_dir, tag="ucf"):
     """
     res_base: suffix-only baseline result, e.g., res_tta_base
@@ -860,9 +863,11 @@ def save_roc_curve_for_paper(res_base, res_tta, out_dir, tag="ucf"):
     ax.legend(
         loc="lower right",
         frameon=True,
-        handlelength=1.4,
-        borderpad=0.3,
-        labelspacing=0.25,
+        fontsize=7,
+        handlelength=1.2,
+        borderpad=0.25,
+        labelspacing=0.2,
+        handletextpad=0.4,
     )
 
     fig.tight_layout(pad=0.2)
