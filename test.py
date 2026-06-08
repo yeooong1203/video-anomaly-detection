@@ -433,6 +433,17 @@ def eval_xd_with_episodic_tta(
         y_true = y_true[eval_mask_frame]
         y_score = y_score[eval_mask_frame]
 
+    # NaN/Inf 확인
+    y_true = np.asarray(y_true).astype(np.int64)
+    y_score = np.asarray(y_score).astype(np.float32)
+
+    if not np.isfinite(y_score).all():
+        bad_idx = np.where(~np.isfinite(y_score))[0]
+        raise ValueError(
+            f"[metric] y_score contains NaN/Inf: "
+            f"{len(bad_idx)} values, first indices={bad_idx[:20]}"
+        )
+
     auc = roc_auc_score(y_true, y_score)
     ap = average_precision_score(y_true, y_score)
 
@@ -442,6 +453,12 @@ def eval_xd_with_episodic_tta(
         "seg_scores_all": seg_scores_all,
         "tta_logs": tta_logs,
         "eval_mask_seg": eval_mask_seg,
+
+        # ROC/PR curve용으로 추가
+        "y_true": y_true,
+        "y_score": y_score,
+        "gt_mode": gt_mode,
+        "exclude_prefix_from_eval": bool(exclude_prefix_from_eval),
     }
 
 
@@ -761,6 +778,102 @@ def save_video_score_plots(
     unit = "frame" if use_frame_axis else "segment"
     print(f"[saved] {unit}-level score plots -> {out_dir}")
 
+def save_roc_curve_for_paper(res_base, res_tta, out_dir, tag="ucf"):
+    """
+    res_base: suffix-only baseline result, e.g., res_tta_base
+    res_tta : suffix-only ITA result, e.g., res_tta
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    y_true_base = np.asarray(res_base["y_true"])
+    y_true_tta = np.asarray(res_tta["y_true"])
+
+    if not np.array_equal(y_true_base, y_true_tta):
+        raise ValueError("Baseline and TTA y_true are different. Check evaluation protocol.")
+
+    y_true = y_true_tta
+    y_base = np.asarray(res_base["y_score"], dtype=np.float32)
+    y_tta = np.asarray(res_tta["y_score"], dtype=np.float32)
+
+    valid = np.isfinite(y_base) & np.isfinite(y_tta)
+
+    if not valid.all():
+        bad_idx = np.where(~valid)[0]
+        raise ValueError(
+            f"[ROC] non-finite score detected: "
+            f"{len(bad_idx)} values, first indices={bad_idx[:20]}"
+        )
+
+    fpr_base, tpr_base, _ = roc_curve(y_true, y_base)
+    fpr_tta, tpr_tta, _ = roc_curve(y_true, y_tta)
+
+    auc_base = roc_auc_score(y_true, y_base)
+    auc_tta = roc_auc_score(y_true, y_tta)
+
+    # 나중에 다시 그릴 수 있도록 데이터 저장
+    np.savez(
+        out_dir / f"roc_data_{tag}.npz",
+        y_true=y_true,
+        y_score_base=y_base,
+        y_score_tta=y_tta,
+        fpr_base=fpr_base,
+        tpr_base=tpr_base,
+        fpr_tta=fpr_tta,
+        tpr_tta=tpr_tta,
+        auc_base=float(auc_base),
+        auc_tta=float(auc_tta),
+    )
+
+    # 논문용 ROC PDF 저장
+    fig, ax = plt.subplots(figsize=(3.5, 2.45))
+
+    ax.plot(
+        fpr_base,
+        tpr_base,
+        linewidth=1.0,
+        linestyle="--",
+        label=f"w/o ITA (AUC={auc_base * 100:.2f})",
+    )
+
+    ax.plot(
+        fpr_tta,
+        tpr_tta,
+        linewidth=1.0,
+        label=f"w/ ITA (AUC={auc_tta * 100:.2f})",
+    )
+
+    ax.plot(
+        [0, 1],
+        [0, 1],
+        linewidth=0.7,
+        linestyle=":",
+        label="Random",
+    )
+
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1.02)
+
+    ax.grid(True, linewidth=0.3, alpha=0.35)
+    ax.legend(
+        loc="lower right",
+        frameon=True,
+        handlelength=1.4,
+        borderpad=0.3,
+        labelspacing=0.25,
+    )
+
+    fig.tight_layout(pad=0.2)
+    fig.savefig(out_dir / f"roc_{tag}.pdf", bbox_inches="tight")
+    plt.close(fig)
+
+    print(f"[saved] ROC data -> {out_dir / f'roc_data_{tag}.npz'}")
+    print(f"[saved] ROC plot -> {out_dir / f'roc_{tag}.pdf'}")
+    print(f"[ROC] w/o ITA AUC: {auc_base * 100:.2f}")
+    print(f"[ROC] w/  ITA AUC: {auc_tta * 100:.2f}")
+
 
 # latex용 plot 그리기 위해 필요한 데이터 저장 
 # segment-level baseline/TTA score & frame-level baseline/TTA score
@@ -1067,12 +1180,22 @@ if __name__ == '__main__':
     
 
     # --------------------------------------------------
+    # ROC curve export for paper
+    # --------------------------------------------------
+    save_roc_curve_for_paper(
+        res_base=res_tta_base,   # suffix-only baseline
+        res_tta=res_tta,         # suffix-only ITA
+        out_dir=Path(args.output_dir) / "roc_curve",
+        tag="suffix_only",
+    )
+    
+    # --------------------------------------------------
     # Demo candidate analysis / export
     # --------------------------------------------------
     video_names = load_video_names(args.video_list_path)
     
     # paper plot data export
-    selected_paper_vids = [30]  # 원하는 vid_idx로 변경
+    selected_paper_vids = [8,16,17]  # 원하는 vid_idx로 변경
     export_paper_plot_data(
         seg_scores_base=res_tta_base["seg_scores_all"],
         seg_scores_tta=res_tta["seg_scores_all"],
@@ -1084,7 +1207,8 @@ if __name__ == '__main__':
         warmup_segments=args.warmup_segments,
         selected_vid_indices=selected_paper_vids,
     )
-    
+
+        
     # TTA baseline csv
     base_rows = summarize_demo_candidates(
         seg_scores_all=res_tta_base["seg_scores_all"],

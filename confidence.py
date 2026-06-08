@@ -35,9 +35,55 @@ class BidirectionalTemporalConsistency:
         T = len(features)
         
         # ⭐ 처음/끝은 낮은 confidence
-        if t == 0 or t == T - 1:
-            return 0.5
+        '''if t == 0 or t == T - 1:
+            return 0.5'''
         
+        '''if t == 0:
+            current_feat = features[t]
+            current_label = labels[t]
+
+            next_feat = features[t+1]
+            next_label = labels[t+1]
+
+            next_feat_dist = np.linalg.norm(current_feat - next_feat)
+            next_label_diff = abs(current_label - next_label)
+            feat_dist = next_feat_dist
+            label_diff = next_label_diff
+
+            feat_similarity = np.exp(-feat_dist / 10.0)
+            label_consistency = 1.0 - label_diff
+
+            confidence = (feat_similarity) * (label_consistency) + (1 - feat_similarity) * (1 - label_consistency)
+
+            return confidence'''
+        
+        normal_proto_k = 5
+        
+        if (t >= 0) & (t< normal_proto_k):
+            return 1.0
+
+
+        if t == T-1:
+            current_feat = features[t]
+            current_label = labels[t]
+
+            prev_feat = features[t-1]
+            prev_label = labels[t-1]
+
+            prev_feat_dist = np.linalg.norm(current_feat - prev_feat)
+            prev_label_diff = abs(current_label - prev_label)
+
+            feat_dist = prev_feat_dist
+            label_diff = prev_label_diff
+
+            feat_similarity = np.exp(-feat_dist / 10.0)
+            label_consistency = 1.0 - label_diff
+
+            confidence = (feat_similarity) * (label_consistency) + (1 - feat_similarity) * (1 - label_consistency)
+
+            return confidence
+
+    
         current_feat = features[t]
         current_label = labels[t]
         

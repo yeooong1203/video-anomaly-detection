@@ -86,9 +86,9 @@ if __name__ == '__main__':
         nesterov=True
     )
     #UCF
-    #scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15,30], gamma=0.1)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[20,30], gamma=0.1)
     #SHT
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[35,40], gamma=0.1)
+    #scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[35,40], gamma=0.1)
     
     auc, ap = test(test_loader, model, args, device)
     print(f"\nEpoch 0 - AUC: {auc:.4f}, AP: {ap:.4f}")

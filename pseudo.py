@@ -1,15 +1,27 @@
 import numpy as np
 from tqdm import tqdm
 import option
+from scipy.stats import norm
 
 
-def find_optimal_threshold(scores):
+def find_optimal_threshold(scores, method='p_value'):
     valid_scores = scores
+
+    if method == 'p_value':
+        p_value = 0.05
+
+        mean = scores.mean()
+        std = scores.std()
+        
+        z_score = norm.ppf(1 - p_value)
+        threshold = mean + z_score * std
+    
+        return threshold
     
     return np.percentile(valid_scores, 90)
 
 
-def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
+def temporal_attraction(video_scores, attraction_strength=0.4, repulsion_strength=0.2, iterations=3):
 
     scores = video_scores.copy()
     
@@ -28,8 +40,15 @@ def temporal_attraction(video_scores, attraction_strength=0.4, iterations=3):
                 max_idx = window.argmax() + window_start
                 distance = abs(max_idx - i)
                 
-                force = attraction_strength * window.max() #* np.exp(-distance / 2.0)
+                force = attraction_strength * window.max() * np.exp(-distance / 2.0)
                 attracted[i] += force
+
+            if window.min() < scores[i]:
+                min_idx  = window.argmin() + window_start
+                distance = abs(min_idx - i)
+
+                force = repulsion_strength * (scores[i] - window.min()) * np.exp(-distance / 2.0)
+                attracted[i] -= force
         
         max_val = attracted.max()
         if max_val > 0:
@@ -104,12 +123,13 @@ def apply_prototype_swap(video_binary_labels):
 
 def generate_improved_pseudo_labels(train_data, nalist,
                                     feature_normalization='standard',
-                                    threshold_method='none',
+                                    threshold_method='p_value',
                                     score_normalization='zscore',
                                     prototype_method='none',
                                     use_attraction=True,
                                     attraction_strength=0.4,
                                     attraction_iterations=3,
+                                    repulsion_strength=0.3,
                                     remove_isolated_abn=True,
                                     isolated_abn_min_length=1,
                                     fill_isolated_norm=True,
@@ -180,6 +200,7 @@ def generate_improved_pseudo_labels(train_data, nalist,
                 all_scores[i] = temporal_attraction(
                     video_scores,
                     attraction_strength=attraction_strength,
+                    repulsion_strength=repulsion_strength,
                     iterations=attraction_iterations
                 )
 
@@ -189,13 +210,14 @@ def generate_improved_pseudo_labels(train_data, nalist,
     # Threshold
     all_scores_flat = np.concatenate(all_scores)
 
-    threshold = find_optimal_threshold(all_scores_flat)
+    threshold = find_optimal_threshold(all_scores_flat, method=threshold_method)
     
     all_binary_labels = []
     
     for video_scores in all_scores:
         binary = (video_scores >= threshold).astype(int)
         all_binary_labels.append(binary)
+    
     
     if remove_isolated_abn:
         for i, binary in enumerate(tqdm(all_binary_labels, desc="Remove isolated abn")):
@@ -245,14 +267,15 @@ def main():
         score_normalization='zscore',
         prototype_method='none',
         use_attraction=True,
-        attraction_strength=0.4,
+        attraction_strength=1.0,
         attraction_iterations=5,
+        repulsion_strength=0.5,
         remove_isolated_abn=True,  
-        isolated_abn_min_length=1,  # N-A-N 제거
+        isolated_abn_min_length=2,  # N-A-N 제거
         fill_isolated_norm=True,  
-        isolated_norm_max_gap=1,  # A-N-A 제거
+        isolated_norm_max_gap=2,  # A-N-A 제거
         use_prototype_swap=True,  
-        swap_threshold=0.7  # 70% 이상이면 swap
+        swap_threshold=0.8  # 80% 이상이면 swap
     )
     
     all_labels_flat = np.concatenate(pseudo_labels_list)
@@ -262,3 +285,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#pseudo_155 버전

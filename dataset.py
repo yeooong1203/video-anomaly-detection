@@ -29,7 +29,7 @@ class UCFTestVideoDataset(data.Dataset):
 class UCFTrainVideoDataset_Stratified(data.Dataset):
     
     def __init__(self, conall_path, pseudo_path, nalist_path, confidence_path,
-                 window_size=2000, stride=2000):
+                 window_size=500, stride=500):
         
         self.nalist = np.load(nalist_path)
         self.num_videos = len(self.nalist)
