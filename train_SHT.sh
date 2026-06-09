@@ -6,7 +6,7 @@ python mainv2.py \
     --window-size 20 \
     --stride 20 \
     --temporal_kernel 5 \
-    --pseudofile Unsup_labels/SHT_pseudo_labels_ng_2.npy \
+    --pseudofile pseudo_labels_swap.npy \
     --train-conall-path SHT_concat_train.npy \
     --train-nalist-path list/SHT_nalist_train.npy \
     --test-conall-path SHT_concat_test.npy \
@@ -14,4 +14,4 @@ python mainv2.py \
     --gt list/gt-SHT-segment.npy\
     --confidence-path list/SHT_confidence_scores.npy\
     --max-epoch 40 \
-    --lr 0.004
+    --lr 0.005

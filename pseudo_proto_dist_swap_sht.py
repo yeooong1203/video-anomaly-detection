@@ -22,7 +22,7 @@ def find_optimal_threshold_gmm(scores, method='gmm_2component'):
         return threshold
     
     if method == 'p_value':
-        p_value = 0.15
+        p_value = 0.1
 
         mean = scores.mean()
         std = scores.std()
@@ -467,11 +467,7 @@ def main():
     
     print(f"  Segments: {total_T:,}")
     print(f"  Videos: {len(nalist)}")
-    print(train_data.shape)
-    print(train_data.dtype)
-    print(np.isfinite(train_data[:100]).all())
-    print(train_data[:100].min(), train_data[:100].max(), train_data[:100].mean(), train_data[:100].std())
-
+    
     # Generate
     pseudo_labels_list = generate_improved_pseudo_labels(
         train_data, nalist,
@@ -480,13 +476,13 @@ def main():
         score_normalization='zscore',
         prototype_method='none',
         use_attraction=True,
-        attraction_strength=0.7,
+        attraction_strength=0.6,
         attraction_iterations=2,
         repulsion_strength=0.4,
         remove_isolated_abn=True,  
         isolated_abn_min_length=1,  # N-A-N 제거
         fill_isolated_norm=True,  
-        isolated_norm_max_gap=2,  # A-N-N-A도 채우기
+        isolated_norm_max_gap=1,  # A-N-N-A도 채우기
         use_prototype_swap=True,  
         swap_threshold=0.8  # 80% 이상이면 swap
     )
