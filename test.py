@@ -341,6 +341,7 @@ def eval_xd_with_episodic_tta(
     exclude_prefix_from_eval=False,
     adapt_prefix_only=False,
     warmup_segments=args.warmup_segments,
+    eval_exclude_segments=None,
     verbose_every=100,
 ):
 
@@ -408,10 +409,12 @@ def eval_xd_with_episodic_tta(
 
     # 3) metric 계산
     if exclude_prefix_from_eval:
+        eval_k = warmup_segments if eval_exclude_segments is None else eval_exclude_segments
+
         eval_mask_seg = _build_eval_mask_from_nalist(
             total_T=total_T,
             nalist=nalist,
-            warmup_segments=warmup_segments,
+            warmup_segments=eval_k,
         )
     else:
         eval_mask_seg = np.ones(total_T, dtype=bool)
@@ -1156,6 +1159,7 @@ if __name__ == '__main__':
         adapt_prefix_only=False,          # normal prototype으로 적응 안 함
         exclude_prefix_from_eval=True,    # normal prototype 제외 평가
         warmup_segments=args.warmup_segments,
+        eval_exclude_segments=None,       # k-sensitivity 실험 - 평가는 항상 앞 20개 제외로 고정
     )
     print("\n[TTA BASELINE - SUFFIX ONLY]")
     print("AUC:", res_tta_base["auc"])
@@ -1177,7 +1181,8 @@ if __name__ == '__main__':
         tta_steps_per_video=args.tta_steps_per_video,
         adapt_prefix_only=True,           # normal prototype으로 적응 함
         exclude_prefix_from_eval=True,    # normal prototype 제외 평가
-        warmup_segments=args.warmup_segments,                
+        warmup_segments=args.warmup_segments,       
+        eval_exclude_segments=None,       # k-sensitivity 실험 - 평가는 항상 앞 20개 제외로 고정
     )
     print("\n[TTA]")
     print("AUC:", res_tta["auc"])
