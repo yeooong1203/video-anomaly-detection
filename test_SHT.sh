@@ -1,6 +1,6 @@
 python test.py \
   --datasetname ShanghaiTech \
-  --ckpt-path unsupervised_ckpt/ShanghaiTech_all_cnn_final_20260529_182252_n4q3m64v.pkl \
+  --ckpt-path unsupervised_ckpt/ShanghaiTech_all_cnn_final_20260609_173515_58ykf0dy.pkl \
   --test-conall-path SHT_concat_test.npy \
   --test-nalist-path list/SHT_nalist_test.npy \
   --gt list/gt-SHT-segment.npy\
@@ -8,11 +8,11 @@ python test.py \
   --feature-size 2048 \
   --frame-repeat 16 \
   --test-batch-size 1\
-  --warmup-segments 5\
+  --warmup-segments 3\
   --tta-q 1.0 \
   --tta-min-keep 3 \
-  --tta-lr 1e-3\
-  --tta-steps-per-video 5 \
+  --tta-lr 1e-2\
+  --tta-steps-per-video 30 \
   --output-dir demo_exports/SHT \
   --plot-y 0.6 \
 

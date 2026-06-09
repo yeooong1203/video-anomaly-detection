@@ -1,9 +1,9 @@
 python test.py \
   --datasetname UCF \
-  --ckpt-path  unsupervised_ckpt/UCF_all_cnn_final_20260609_035150_tco5tx0u.pkl \
+  --ckpt-path unsupervised_ckpt/UCF_all_cnn_final_20260609_035150_tco5tx0u.pkl\
   --test-conall-path Concat_test_10.npy \
   --test-nalist-path list/nalist_test_i3d.npy \
-  --gt list/gt-ucf-RTFM.npy \
+  --gt list/gt-ucf-R.npy \
   --video-list-path list/ucf-i3d_test_fixed_local.list \
   --feature-size 2048 \
   --frame-repeat 16 \
@@ -18,7 +18,6 @@ python test.py \
 
 
 #MODEL note 
-#UCF ABLATION
-#ShanghaiTech_all_cnn_final_20260528_131928_ey7x35aw -> w/o TempAtt, w/o Conf
-#ShanghaiTech_all_cnn_final_20260528_131708_k31nfzbi -> w/ TempAtt, w/o Conf
-#ShanghaiTech_all_cnn_final_20260529_182252_n4q3m64v -> w/ TempAtt, w/ Conf
+#UCF_all_cnn_final_20260609_035150_tco5tx0u.pkl -> gt-R로 학습+평가 
+#UCF_all_cnn_final_20260609_093445_rrt1vxln.pkl-> gt-RTFM으로 학습+평가
+#UCF_all_cnn_final_20260606_154716_uwqbqnnz.pkl -> 최종 모델이엇음!

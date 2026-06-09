@@ -1,5 +1,3 @@
-# UCF_pseudo_labels_ng.npy 생성한 코드 (FREEZE!)
-
 import numpy as np
 from tqdm import tqdm
 from sklearn.mixture import GaussianMixture
@@ -7,7 +5,6 @@ from scipy.stats import norm
 import matplotlib.pyplot as plt
 
 def find_optimal_threshold_gmm(scores, method='gmm_2component'):
-    #valid_scores = scores[scores > 0]
     valid_scores = scores
     
     if method == 'gmm_2component':
@@ -25,23 +22,13 @@ def find_optimal_threshold_gmm(scores, method='gmm_2component'):
         return threshold
     
     if method == 'p_value':
-        p_value = 0.05
+        p_value = 0.15
 
         mean = scores.mean()
         std = scores.std()
         
         z_score = norm.ppf(1 - p_value)
         threshold = mean + z_score * std
-        
-        '''print(f"  Standard p-value:")
-        print(f"    Mean: {mean:.4f}")
-        print(f"    Std: {std:.4f}")
-        print(f"    z-score (p={p_value}): {z_score:.4f}")
-        print(f"    Threshold: {threshold:.4f}")
-    
-        # Actual percentile
-        actual_percentile = (scores < threshold).mean() * 100
-        print(f"    → Actual percentile: {actual_percentile:.1f}th")'''
     
         return threshold
 
@@ -81,42 +68,22 @@ def temporal_attraction(video_scores, attraction_strength=0.4, repulsion_strengt
                 distance = abs(max_idx - i)
                 
                 force = attraction_strength * window.max()
-                #force = window.max()
-                #force = attraction_strength * window.max() * np.exp(-distance)
+
                 attracted[i] += force
 
-            # ── 아래로 밀기 (신규) ──
+            # ── 아래로 밀기 ──
             if window.min() < scores[i]:
                 min_idx  = window.argmin() + window_start
                 distance = abs(min_idx - i)
 
                 force = repulsion_strength * (scores[i] - window.min())
-                #force = (scores[i] - window.min())
                 attracted[i] -= force
-        
-        # Renormalize
-        '''valid_mask = attracted > 0
-        if valid_mask.sum() > 0:
-            valid = attracted[valid_mask]
-            if valid.max() > valid.min():
-                #attracted[valid_mask] = (valid - valid.min()) / (valid.max() - valid.min())
-                norm_val = (valid - valid.min()) / (valid.max() - valid.min() + 1e-8)
-                attracted[valid_mask] = 1 / (1 + np.exp(-10 * (norm_val - 0.5)))
-                #attracted[valid_mask] = norm_val ** 0.5
-                #attracted[valid_mask] = norm_val ** 2.0
-        
-        scores = attracted'''
-
-        #attracted = np.clip(attracted, 0, None)
-        
+            
         max_val = attracted.max()
-        #max_val = np.percentile(attracted, 99)
         if max_val > 0:
             scores = attracted / max_val
         else:
             scores = attracted
-
-        #scores = attracted
     
     return scores
 
@@ -186,7 +153,7 @@ def check_prototype_swap(video_binary_labels, abnormal_ratio_threshold=0.8):
 
 def apply_prototype_swap(video_binary_labels):
     return 1 - video_binary_labels
-
+    
 
 def visualize_score_distribution(all_scores_flat, save_path='score_distribution.png'):
     """
@@ -270,7 +237,7 @@ def visualize_score_distribution(all_scores_flat, save_path='score_distribution.
     print(f"  Score at max gradient: {sorted_scores[max_grad_idx]:.4f}")
     print(f"  Percentile at max gradient: {max_grad_idx/len(sorted_scores)*100:.2f}th")
     print(f"{'='*60}")
-    
+
 
 def generate_improved_pseudo_labels(train_data, nalist,
                                     feature_normalization='standard',
@@ -279,18 +246,16 @@ def generate_improved_pseudo_labels(train_data, nalist,
                                     prototype_method='median_based',
                                     use_attraction=True,
                                     attraction_strength=0.4,
-                                    attraction_iterations=3,
+                                    attraction_iterations=2,
                                     repulsion_strength=0.3,
                                     remove_isolated_abn=True,
-                                    isolated_abn_min_length=1,
+                                    isolated_abn_min_length=2,
                                     fill_isolated_norm=True,
                                     isolated_norm_max_gap=2,
                                     use_prototype_swap=True,
                                     swap_threshold=0.8):
     """
     개선된 Pseudo Label 생성
-    
-    새로운 기능:
     1. Remove isolated abnormal (N-A-N → N-N-N)
     2. Fill isolated normal (A-N-A → A-A-A)
     3. Prototype swap (비디오 대부분 abnormal → 반전)
@@ -309,15 +274,12 @@ def generate_improved_pseudo_labels(train_data, nalist,
     print(f"  Fill isolated normal: {fill_isolated_norm} (max_gap={isolated_norm_max_gap})")
     print(f"  Use prototype swap: {use_prototype_swap} (threshold={swap_threshold})")
     
-    total_T = int(nalist[-1, 1])
-    
     # Step 0: Feature Normalization
     print(f"\n[Step 0: Feature Normalization]")
     all_features = []
     
     for info in tqdm(nalist, desc="Loading"):
         start, end = int(info[0]), int(info[1])
-        #video_feat = train_data[start:end].mean(axis=1)
         video_feat = np.mean(train_data[start:end], axis=1)
         all_features.append(video_feat)
     
@@ -339,7 +301,6 @@ def generate_improved_pseudo_labels(train_data, nalist,
     
     for video_feat in tqdm(all_features, desc="Scoring"):
 
-
         if len(video_feat) < 8:
             all_scores.append(np.zeros(len(video_feat)))
             continue
@@ -353,26 +314,15 @@ def generate_improved_pseudo_labels(train_data, nalist,
             prototype = video_feat[proto_indices].mean(axis=0)
         else:
             prototype = video_feat[:5].mean(axis=0)
-            #prototype = np.median(video_feat[:5], axis=0)
-
-            '''for _ in range(3):
-                dist = np.linalg.norm(video_feat - prototype, axis=1)
-                idx = np.argsort(dist)[:5]
-                prototype = video_feat[idx].mean(axis=0)'''
 
             proto_indices = range(5)
         
         # Distance
-        #video_feat = video_feat / np.linalg.norm(video_feat, axis=1, keepdims=True)
         distances = np.linalg.norm(video_feat - prototype, axis=1)
-        #distances = np.sum(np.abs(video_feat - prototype), axis=1)
         distances[proto_indices] = 0
-        #sim = cosine_similarity(video_feat, prototype.reshape(1,-1)).squeeze()
-        #scores = 1 - sim
-        #scores[proto_indices] = 0
-        
+
         all_scores.append(distances)
-        #all_scores.append(scores)
+
     
     # Step 2: Score Normalization
     print(f"\n[Step 2: Score Normalization ({score_normalization})]")
@@ -392,8 +342,6 @@ def generate_improved_pseudo_labels(train_data, nalist,
                 if std > 1e-6:
                     normalized = np.zeros_like(video_scores)
                     normalized[valid_mask] = (valid_scores - mean) / std
-                    #normalized = normalized ** 2
-                    #normalized = 1 / (1 + np.exp(-normalized))
                     all_scores[i] = normalized
 
             
@@ -415,11 +363,6 @@ def generate_improved_pseudo_labels(train_data, nalist,
                     repulsion_strength=repulsion_strength,
                     iterations=attraction_iterations
                 )
-
-            #all_scores[i] = all_scores[i] ** 2
-
-            #from scipy.ndimage import gaussian_filter1d
-            #all_scores[i] = gaussian_filter1d(all_scores[i], sigma=2.0)
     
     # Step 4: Adaptive Threshold
     print(f"\n[Step 4: Finding Optimal Threshold ({threshold_method})]")
@@ -428,7 +371,15 @@ def generate_improved_pseudo_labels(train_data, nalist,
     visualize_score_distribution(all_scores_flat)
 
     threshold = find_optimal_threshold_gmm(all_scores_flat, method=threshold_method)
-    
+
+    print("score min:", all_scores_flat.min())
+    print("score max:", all_scores_flat.max())
+    print("score mean:", all_scores_flat.mean())
+    print("score std:", all_scores_flat.std())
+    for p in [50, 75, 80, 90, 95, 98, 99]:
+        print(p, np.percentile(all_scores_flat, p))
+
+
     print(f"  Optimal threshold: {threshold:.4f}")
     
     # Step 5: Binary Labels
@@ -506,22 +457,21 @@ def main():
     
     # Load data
     print("\n[Loading Data]")
-    train_nalist_path = r".\list\nalist_i3d.npy"
-    train_data_path = r"..\C2FPL\concat_UCF.npy"
+    train_nalist_path = "list/SHT_nalist_train.npy"
+    train_data_path = "SHT_concat_train.npy"
     
     nalist = np.load(train_nalist_path)
     total_T = int(nalist[-1, 1])
     
-    train_data = np.memmap(
-        train_data_path,
-        dtype="float32",
-        mode="r",
-        shape=(total_T, 10, 2048)
-    )
+    train_data = np.load(train_data_path, mmap_mode="r")
     
     print(f"  Segments: {total_T:,}")
     print(f"  Videos: {len(nalist)}")
-    
+    print(train_data.shape)
+    print(train_data.dtype)
+    print(np.isfinite(train_data[:100]).all())
+    print(train_data[:100].min(), train_data[:100].max(), train_data[:100].mean(), train_data[:100].std())
+
     # Generate
     pseudo_labels_list = generate_improved_pseudo_labels(
         train_data, nalist,
@@ -530,11 +480,11 @@ def main():
         score_normalization='zscore',
         prototype_method='none',
         use_attraction=True,
-        attraction_strength=0.8,
-        attraction_iterations=3,
-        repulsion_strength=0.7,
+        attraction_strength=0.7,
+        attraction_iterations=2,
+        repulsion_strength=0.4,
         remove_isolated_abn=True,  
-        isolated_abn_min_length=2,  # N-A-N 제거
+        isolated_abn_min_length=1,  # N-A-N 제거
         fill_isolated_norm=True,  
         isolated_norm_max_gap=2,  # A-N-N-A도 채우기
         use_prototype_swap=True,  
