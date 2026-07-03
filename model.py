@@ -20,6 +20,7 @@ class Model_V2_AllCNN(nn.Module):
         self.fc_out = nn.Linear(32, 1)
         '''
         self.conv1 = nn.Conv1d(n_features, 256, kernel_size=3, padding=3//2)
+        #self.conv1 = nn.Conv1d(n_features, 256, kernel_size=3, padding=3//2, padding_mode='replicate')
         self.bn1 = nn.BatchNorm1d(256)
 
         self.conv_att1 = nn.Conv1d(n_features, 256, kernel_size=3, padding=3//2)

@@ -3,8 +3,8 @@ python mainv2.py \
     --model_type all_cnn \
     --feature-size 2048 \
     --train-batch-size 8\
-    --window-size 20 \
-    --stride 20 \
+    --window-size 16 \
+    --stride 16 \
     --temporal_kernel 5 \
     --pseudofile pseudo_labels_swap.npy \
     --train-conall-path SHT_concat_train.npy \
@@ -14,4 +14,4 @@ python mainv2.py \
     --gt list/gt-SHT-segment.npy\
     --confidence-path list/SHT_confidence_scores.npy\
     --max-epoch 40 \
-    --lr 0.005
+    --lr 0.001

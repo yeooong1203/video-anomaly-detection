@@ -43,7 +43,7 @@ def find_optimal_threshold_gmm(scores, method='gmm_2component'):
     
         return threshold
     
-    return np.percentile(valid_scores, 95)
+    return np.percentile(valid_scores, 80)
 
 
 def temporal_attraction(video_scores, attraction_strength=0.4, repulsion_strength=0.2, iterations=3):
@@ -58,8 +58,8 @@ def temporal_attraction(video_scores, attraction_strength=0.4, repulsion_strengt
                 continue'''
             
             # Window (i-5 ~ i+5)
-            window_start = max(0, i - 5)
-            window_end = min(len(scores), i + 6)
+            window_start = max(0, i - 1)
+            window_end = min(len(scores), i + 2)
             window = scores[window_start:window_end]
             
             # 주변에 더 높은 score 있으면 끌어올림
@@ -476,9 +476,9 @@ def main():
         score_normalization='zscore',
         prototype_method='none',
         use_attraction=True,
-        attraction_strength=0.6,
-        attraction_iterations=2,
-        repulsion_strength=0.4,
+        attraction_strength=0.4,
+        attraction_iterations=5,
+        repulsion_strength=0.1,
         remove_isolated_abn=True,  
         isolated_abn_min_length=1,  # N-A-N 제거
         fill_isolated_norm=True,  

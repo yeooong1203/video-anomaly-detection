@@ -1,6 +1,6 @@
 python test.py \
   --datasetname UCF \
-  --ckpt-path unsupervised_ckpt/UCF_all_cnn_final_20260609_035150_tco5tx0u.pkl\
+  --ckpt-path unsupervised_ckpt/UCF_all_cnn_final_20260609_093445_rrt1vxln.pkl\
   --test-conall-path Concat_test_10.npy \
   --test-nalist-path list/nalist_test_i3d.npy \
   --gt list/gt-ucf-R.npy \
@@ -19,5 +19,5 @@ python test.py \
 
 #MODEL note 
 #UCF_all_cnn_final_20260609_035150_tco5tx0u.pkl -> gt-R로 학습+평가 
-#UCF_all_cnn_final_20260609_093445_rrt1vxln.pkl-> gt-RTFM으로 학습+평가
+#UCF_all_cnn_final_20260609_093445_rrt1vxln.pkl-> gt-RTFM으로 학습+평가 (아래 모델이랑 완전 똑같은거임)
 #UCF_all_cnn_final_20260606_154716_uwqbqnnz.pkl -> 최종 모델이엇음!

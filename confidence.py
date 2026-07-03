@@ -59,7 +59,7 @@ class BidirectionalTemporalConsistency:
         
         normal_proto_k = 5
         
-        if (t >= 0) & (t< normal_proto_k):
+        if t< normal_proto_k:
             return 1.0
 
 
@@ -76,7 +76,7 @@ class BidirectionalTemporalConsistency:
             feat_dist = prev_feat_dist
             label_diff = prev_label_diff
 
-            feat_similarity = np.exp(-feat_dist / 10.0)
+            feat_similarity = np.exp(-feat_dist / 15.0)
             label_consistency = 1.0 - label_diff
 
             confidence = (feat_similarity) * (label_consistency) + (1 - feat_similarity) * (1 - label_consistency)
@@ -116,7 +116,7 @@ class BidirectionalTemporalConsistency:
         
         # 1. Feature similarity (0~1)
         #    가까우면 1, 멀면 0
-        feat_similarity = np.exp(-feat_dist / 10.0)
+        feat_similarity = np.exp(-feat_dist / 15.0)
         
         # 2. Label consistency (0 or 1)
         #    같으면 1, 다르면 0

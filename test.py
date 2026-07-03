@@ -343,6 +343,7 @@ def eval_xd_with_episodic_tta(
     warmup_segments=args.warmup_segments,
     eval_exclude_segments=None,
     verbose_every=100,
+    use_adapter_without_tta=False,   # 추가
 ):
 
     total_T = X_flat.shape[0]
@@ -387,8 +388,14 @@ def eval_xd_with_episodic_tta(
         adapter_episode.eval()
         with torch.no_grad():
             x_video_in = x_video.unsqueeze(0)                 # (1,T,1024)
-            x_2048 = adapter_episode(x_video_in)              # (1,T,2048)
-            prob, _ = model(x_2048, return_logits=True)
+            #x_2048 = adapter_episode(x_video_in)              # (1,T,2048)
+
+            if use_tta or use_adapter_without_tta:
+                model_input = adapter_episode(x_video_in)
+            else:
+                model_input = x_video_in
+
+            prob, _ = model(model_input, return_logits=True)
 
         #prob = prob.squeeze(-1).detach().cpu().numpy()     # (T_i,)
         prob = prob[0, :, 0].detach().cpu().numpy() 
@@ -1141,6 +1148,7 @@ if __name__ == '__main__':
         use_tta=False,
         verbose_every=100,
         exclude_prefix_from_eval=False,
+        use_adapter_without_tta=False,
     )
     print("\n[BASELINE]")
     print("AUC:", res_base["auc"])
@@ -1160,6 +1168,7 @@ if __name__ == '__main__':
         exclude_prefix_from_eval=True,    # normal prototype 제외 평가
         warmup_segments=args.warmup_segments,
         eval_exclude_segments=None,       # k-sensitivity 실험 - 평가는 항상 앞 20개 제외로 고정
+        use_adapter_without_tta=False,
     )
     print("\n[TTA BASELINE - SUFFIX ONLY]")
     print("AUC:", res_tta_base["auc"])

@@ -8,12 +8,13 @@ def adaptive_hybrid_loss(outputs, targets, threshold=0.3):
     error = torch.abs(outputs - targets)
     
     bce = F.binary_cross_entropy(outputs, targets, reduction='none')
-    hb = F.huber_loss(outputs, targets, delta=0.3, reduction='none')
+    #hb = F.huber_loss(outputs, targets, delta=0.3, reduction='none')
+    mse = 0.5 * F.mse_loss(outputs, targets, reduction='none')
     
     # Error 작으면 huber, 크면 BCE
     mask = (error < threshold).float()
     
-    loss = mask * hb + (1 - mask) * bce
+    loss = mask * mse + (1 - mask) * bce
     return loss
 
 
@@ -57,9 +58,23 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
 
         labels = torch.where(
             (confidences < 0.7),
-            labels * confidences + (1 - labels) * (1 - confidences),
+            labels * confidences + (1-labels) * (1 - confidences),
             labels
         )
+
+        #labels = labels * confidences + 0.5 * (1 - confidences)
+
+        '''soft_labels  = labels * confidences + (1-labels) * (1-confidences)
+
+        alpha = torch.clamp(
+            (confidences - 0.5) / (0.7 - 0.5),
+            0.0, 1.0
+        )
+        # conf=0.5 → alpha=0 → soft_labels 그대로
+        # conf=0.7 → alpha=1 → binary labels 그대로
+        # 중간 → 선형 보간
+
+        labels = alpha * labels + (1-alpha) * soft_labels'''
         
         loss = adaptive_hybrid_loss(
             outputs, labels, threshold=0.3

@@ -22,13 +22,18 @@ def main():
     print(f"  Total segments: {total_T:,}")
     print(f"  Total videos: {len(nalist)}")
     
+    '''
     train_data = np.memmap(
         train_conall_path,
         dtype="float32",
         mode="r",
         shape=(total_T, 10, args.feature_size)
     )
+    '''    
+    train_data = np.load(train_conall_path, mmap_mode="r")
+    
     print(f"  Features loaded: {train_data.shape}")
+
     
     # ⭐ Pseudo labels (pseudo.py를 돌려서 얻은 pseudo label)
     pseudo_labels = np.load(pseudo_labels_path)

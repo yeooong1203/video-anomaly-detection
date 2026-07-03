@@ -10,9 +10,16 @@ class UCFTestVideoDataset(data.Dataset):
     def __init__(self, conall_path, nalist_path):
         self.nalist = np.load(nalist_path)                 # (N,2)
         self.total_T = int(self.nalist[-1, 1])
+        
         self.con_all = np.memmap(conall_path, dtype="float32", mode="r",
                                  shape=(self.total_T, 10, args.feature_size))
+        '''self.con_all  = np.load(conall_path, mmap_mode="r")
+
         assert int(self.nalist[-1, 1]) == self.total_T, "nalist end index must equal total_T"
+        assert self.con_all.shape == (self.total_T, 10, args.feature_size), (
+            f"Test feature shape mismatch: {self.con_all.shape} vs "
+            f"{(self.total_T, 10, args.feature_size)}"
+        )'''
 
 
     def __len__(self):
@@ -39,12 +46,22 @@ class UCFTrainVideoDataset_Stratified(data.Dataset):
         assert int(self.nalist[-1, 1]) == self.total_T, (
             f"nalist total_T mismatch: nalist_end={int(self.nalist[-1, 1])}, pseudo_T={self.total_T}"
         )
-        self.con_all = np.memmap(
+        assert len(self.confidences) == self.total_T, (
+            f"confidence length mismatch: confidence_T={len(self.confidences)}, pseudo_T={self.total_T}"
+        )
+        self.con_all = np.load(conall_path, mmap_mode="r")
+        assert self.con_all.shape == (self.total_T, 10, args.feature_size), (
+            f"Train feature shape mismatch: {self.con_all.shape} vs "
+            f"{(self.total_T, 10, args.feature_size)}"
+        )
+        
+        '''self.con_all = np.memmap(
             conall_path,
             dtype="float32",
             mode="r",
             shape=(self.total_T, 10, args.feature_size)
-        )
+        )'''
+        
         print("loaded feature:", conall_path, self.con_all.shape)
 
         self.window_size = window_size

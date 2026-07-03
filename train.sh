@@ -12,6 +12,6 @@ python mainv2.py \
     --test-conall-path Concat_test_10.npy \
     --test-nalist-path list/nalist_test_i3d.npy \
     --confidence-path list/UCF_confidence_scores.npy \
-    --gt list/gt-ucf-R.npy \
+    --gt list/gt-ucf-RTFM.npy \
     --max-epoch 30 \
     --lr 0.001
