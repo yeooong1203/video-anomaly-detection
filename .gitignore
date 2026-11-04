@@ -7,6 +7,8 @@ Concat_test_10.npy
 concat_XD_test_R50NL.npy
 SHT_concat_test.npy
 SHT_concat_train.npy
+concat_sht.npy
+Concat_test_sht.npy
 
 # logs & ouput folders
 wandb/
