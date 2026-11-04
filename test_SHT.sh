@@ -1,6 +1,6 @@
 python test.py \
   --datasetname ShanghaiTech \
-  --ckpt-path unsupervised_ckpt/ShanghaiTech_all_cnn_final_20260609_211427_pqlhqz5g.pkl \
+  --ckpt-path unsupervised_ckpt/ShanghaiTech_all_cnn_final_20261102_010347_80tgcvxy.pkl \
   --test-conall-path SHT_concat_test.npy \
   --test-nalist-path list/SHT_nalist_test.npy \
   --gt list/gt-SHT-segment.npy\

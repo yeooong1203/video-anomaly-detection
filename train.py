@@ -43,7 +43,7 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
         outputs = model(features)
         outputs = outputs.squeeze(-1)  # (B, T)
 
-        labels = torch.where(
+        '''labels = torch.where(
             confidences < 0.5,
             1-labels,
             labels
@@ -59,7 +59,7 @@ def concatenated_train_variable_length(train_loader, model, optimizer, epoch,
             (confidences < 0.7),
             labels * confidences + (1 - labels) * (1 - confidences),
             labels
-        )
+        )'''
         
         loss = adaptive_hybrid_loss(
             outputs, labels, threshold=0.3

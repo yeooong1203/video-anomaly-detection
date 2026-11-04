@@ -142,6 +142,10 @@ class BidirectionalTemporalConsistency:
         Returns:
             confidences: (T,) numpy array
         """
+
+        '''if np.sum(video_labels) == 0:          # 라벨러가 정상으로 판단한 비디오 → conf 미적용
+            return np.ones(len(video_features)) # 여기 두줄 추가 후 수정 중'''
+
         T = len(video_features)
         confidences = np.zeros(T)
         

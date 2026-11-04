@@ -6,7 +6,7 @@ python mainv2.py \
     --window-size 500 \
     --stride 500 \
     --temporal_kernel 5 \
-    --pseudofile Unsup_labels/UCF_pseudo_labels_ng.npy \
+    --pseudofile pseudo_labels_swap.npy \
     --train-conall-path ../C2FPL/concat_UCF.npy \
     --train-nalist-path list/nalist_i3d.npy \
     --test-conall-path Concat_test_10.npy \
@@ -14,4 +14,4 @@ python mainv2.py \
     --confidence-path list/UCF_confidence_scores.npy \
     --gt list/gt-ucf-R.npy \
     --max-epoch 30 \
-    --lr 0.001
+    --lr 0.01

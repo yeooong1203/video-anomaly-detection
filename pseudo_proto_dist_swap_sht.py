@@ -58,8 +58,8 @@ def temporal_attraction(video_scores, attraction_strength=0.4, repulsion_strengt
                 continue'''
             
             # Window (i-5 ~ i+5)
-            window_start = max(0, i - 5)
-            window_end = min(len(scores), i + 6)
+            window_start = max(0, i - 1)
+            window_end = min(len(scores), i + 2)
             window = scores[window_start:window_end]
             
             # 주변에 더 높은 score 있으면 끌어올림
@@ -67,7 +67,7 @@ def temporal_attraction(video_scores, attraction_strength=0.4, repulsion_strengt
                 max_idx = window.argmax() + window_start
                 distance = abs(max_idx - i)
                 
-                force = attraction_strength * window.max()
+                force = window.max()
 
                 attracted[i] += force
 
@@ -76,7 +76,7 @@ def temporal_attraction(video_scores, attraction_strength=0.4, repulsion_strengt
                 min_idx  = window.argmin() + window_start
                 distance = abs(min_idx - i)
 
-                force = repulsion_strength * (scores[i] - window.min())
+                force = (scores[i] - window.min())
                 attracted[i] -= force
             
         max_val = attracted.max()

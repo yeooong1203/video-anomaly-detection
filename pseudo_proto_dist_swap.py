@@ -343,14 +343,24 @@ def generate_improved_pseudo_labels(train_data, nalist,
         if len(video_feat) < 8:
             all_scores.append(np.zeros(len(video_feat)))
             continue
+
+        import random
         
         # Prototype
-        if prototype_method == 'median_based':
+        if prototype_method == 'median':
             median_feat = np.median(video_feat, axis=0)
             distances_to_median = np.linalg.norm(video_feat - median_feat, axis=1)
             top_k = min(5, len(video_feat) // 2)
             proto_indices = np.argsort(distances_to_median)[:top_k]
             prototype = video_feat[proto_indices].mean(axis=0)
+        elif prototype_method == 'random':
+            rng = np.random.default_rng(42)
+
+            k = min(5, len(video_feat))
+            idx = rng.choice(len(video_feat), size=k, replace=False)
+
+            prototype = video_feat[idx].mean(axis=0)
+            proto_indices = range(5)
         else:
             prototype = video_feat[:5].mean(axis=0)
             #prototype = np.median(video_feat[:5], axis=0)

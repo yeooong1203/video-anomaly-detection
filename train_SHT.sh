@@ -13,5 +13,5 @@ python mainv2.py \
     --test-nalist-path list/SHT_nalist_test.npy \
     --gt list/gt-SHT-segment.npy\
     --confidence-path list/SHT_confidence_scores.npy\
-    --max-epoch 40 \
+    --max-epoch 30 \
     --lr 0.005
