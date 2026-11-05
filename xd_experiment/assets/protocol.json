@@ -1,0 +1,22 @@
+{
+  "dimension": 1024,
+  "crops": 5,
+  "frames_per_snippet": 16,
+  "train_videos": 3954,
+  "test_videos": 800,
+  "expected_gt_frames": 2330384,
+  "expected_gt_uint8_sha256": "55e3017b39c8429517d296f398f7ce34af1e77903fb2848f23b6c99ba1621b13",
+  "official_implementation_commit": "f846d8cfc454943ec165bd2489b71e7dc0a1064d",
+  "official_annotation_tree": "3d4db78b15db767d31b1799be08b33a7bead9219",
+  "official_gt_git_blob": "8d47b9bec08d35e5f16f9bd47147aec9f27044bc",
+  "official_gt_file_sha256": "e2f9260882450e9ccabe8deaaac63a54b94558db4197f3e329125bf36e3b3863",
+  "primary_metric": "sklearn average_precision_score, frame-level pooled",
+  "companion_metric": "official auc(recall,precision), frame-level pooled",
+  "crop_policy": "arithmetic mean of FIVE genuine RGB crop FEATURES",
+  "modality": "RGB only; Flow and audio unused",
+  "frame_domain": "published feature-aligned T*16; original partial video tails excluded by official feature protocol",
+  "source_urls": [
+    "https://github.com/Roc-Ng/XDVioDet/tree/f846d8cfc454943ec165bd2489b71e7dc0a1064d",
+    "https://github.com/Roc-Ng/XD-Violence/tree/3d4db78b15db767d31b1799be08b33a7bead9219"
+  ]
+}
